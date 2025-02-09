@@ -1,0 +1,21 @@
+Server:
+  Port: 8901
+  ReadTimeout: 15s
+  WriteTimeout: 15s
+
+API:
+  BasePath: ""
+  APITimeout: 15s
+  EnableSwagger: true
+
+Database:
+  SlaveDSN: "postgres://postgres:1235813@localhost:5432/election?sslmode=disable"
+  MasterDSN: "postgres://postgres:1235813@localhost:5432/election?sslmode=disable"
+  RetryInterval: 10
+  MaxIdleConn: 10
+  MaxConn: 10
+  ConnMaxLifetime: 10s
+
+
+Encryption:
+  Key : "NZkrqmVGg6Bi4QbqGXbH9wz3Q0+NCGvMKA2j8hqD5eM="
