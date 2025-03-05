@@ -10,6 +10,9 @@ run-api: dependency swag-init
 	@echo ">> Running API Server"
 	@go run main.go server-http
 
+migrate-up:
+	@echo ">> Running Migrate Up"
+	@migrate -path db/migrations -database "postgres://postgres:1235813@localhost:5433/elections?sslmode=disable" up
 
 remock:
 	#https://github.com/vektra/mockery
