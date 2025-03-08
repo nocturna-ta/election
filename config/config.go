@@ -12,6 +12,7 @@ type (
 		API        APIConfig        `yaml:"API"`
 		Database   DBConfig         `yaml:"Database"`
 		Encryption EncryptionConfig `yaml:"Encryption"`
+		Blockchain BlockchainConfig `yaml:"Blockchain"`
 	}
 	ServerConfig struct {
 		Port         uint          `yaml:"Port" env:"SERVER_PORT"`
@@ -30,6 +31,10 @@ type (
 		MaxIdleConn     int    `yaml:"MaxIdleConn" env:"DB_MAX_IDLE_CONN"`
 		MaxConn         int    `yaml:"MaxConn" env:"DB_MAX_CONN"`
 		ConnMaxLifetime string `yaml:"ConnMaxLifetime" env:"DB_CONN_MAX_LIFETIME"`
+	}
+	BlockchainConfig struct {
+		GanacheURL      string `yaml:"GanacheURL" env:"GANACHE_URL"`
+		ContractAddress string `yaml:"ContractAddress" env:"CONTRACT_ADDRESS"`
 	}
 	EncryptionConfig struct {
 		Key string `yaml:"Key" env:"ENCRYPTION_KEY"`

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/election/internal/handler/api"
 	"github.com/nocturna-ta/golib/database/sql"
@@ -38,9 +39,15 @@ func run(cmd *cobra.Command, args []string) error {
 		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	}, sql.DriverPostgres)
 
+	client, err := ethclient.Dial(cfg.Blockchain.GanacheURL)
+	if err != nil {
+		return err
+	}
+
 	appContainer := newContainer(&options{
-		Cfg: cfg,
-		DB:  database,
+		Cfg:    cfg,
+		DB:     database,
+		Client: client,
 	})
 
 	server := api.New(&api.Options{

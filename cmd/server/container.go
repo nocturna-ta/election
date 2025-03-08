@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases"
@@ -18,12 +20,17 @@ type container struct {
 }
 
 type options struct {
-	Cfg *config.MainConfig
-	DB  *sql.Store
+	Cfg    *config.MainConfig
+	DB     *sql.Store
+	Client *ethclient.Client
 }
 
 func newContainer(opts *options) *container {
-	electionRepo := dao.NewElectionRepository(&dao.OptsElectionRepository{DB: opts.DB})
+	electionRepo := dao.NewElectionRepository(&dao.OptsElectionRepository{
+		DB:              opts.DB,
+		ContractAddress: common.HexToAddress(opts.Cfg.Blockchain.ContractAddress),
+		Client:          opts.Client,
+	})
 
 	txMgr, err := txmanager.New(context.Background(), &txmanager.DriverConfig{
 		Type: "sql",

@@ -19,3 +19,7 @@ Database:
 
 Encryption:
   Key : "NZkrqmVGg6Bi4QbqGXbH9wz3Q0+NCGvMKA2j8hqD5eM="
+
+BlockchainConfig:
+  GanacheURL: "http://127.0.0.1:7545"
+  ContractAddress: "0xE8Bb4a8F1B7e7bE417fbf00B5d238524A482e092"

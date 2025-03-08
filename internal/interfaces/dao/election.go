@@ -45,6 +45,7 @@ func NewElectionRepository(opts *OptsElectionRepository) repository.ElectionRepo
 const (
 	insertCandidate = `INSERT INTO candidates (id, name, election_no, is_active, created_at, updated_at)`
 	selectCandidate = `SELECT %s FROM candidates %s WHERE TRUE %s`
+	updateCandidate = `UPDATE candidates SET %s = WHERE TRUE %s`
 )
 
 func (e *ElectionRepository) InsertCandidate(ctx context.Context, candidate *model.Candidate, signedTransaction string) error {
@@ -208,14 +209,15 @@ func (e *ElectionRepository) GetCandidateByNo(ctx context.Context, no string) (*
 	return &candidateModel, nil
 }
 
-func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string) error {
+func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string, signedTransaction string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.CandidateActivate")
 	defer span.End()
 
 	sqlTrx := utils.GetSqlTx(ctx)
 
 	var (
-		err error
+		err  error
+		args []any
 	)
 
 	candidate, err := e.contract.GetCandidate(nil, id)
@@ -233,18 +235,39 @@ func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string) e
 		return ErrNoUpdateHappened
 	}
 
+	setQuery := "is_active = true"
+	whereQuery := " AND id = $1 AND is_deleted = false"
+	args = append(args, id)
+
+	query := fmt.Sprintf(updateCandidate, setQuery, whereQuery)
+
 	if sqlTrx != nil {
-		_, err = sqlTrx.ExecContext(ctx, `UPDATE candidates SET is_active = true WHERE id = $1`, id)
+		_, err = sqlTrx.ExecContext(ctx, query, args...)
 	} else {
-		_, err = e.db.GetMaster().ExecContext(ctx, `UPDATE candidates SET is_active = true WHERE id = $1`, id)
+		_, err = e.db.GetMaster().ExecContext(ctx, query, args...)
 	}
 
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
+			"args":  args,
 		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to activate candidate")
 		return err
 	}
+	tx, err := utils2.StringToTx(signedTransaction)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to convert string to transaction")
+		return err
+	}
 
+	err = e.client.SendTransaction(ctx, tx)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to send transaction")
+		return err
+	}
 	return nil
 }

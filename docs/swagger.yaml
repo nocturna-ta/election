@@ -1,0 +1,181 @@
+basePath: /
+definitions:
+  controller.errorResponse:
+    properties:
+      error_code:
+        type: integer
+      error_message:
+        type: string
+    type: object
+  controller.jsonResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      error:
+        $ref: '#/definitions/controller.errorResponse'
+      message:
+        type: string
+    type: object
+  request.CandidateActivationRequest:
+    properties:
+      id:
+        type: string
+      signed_transaction:
+        type: string
+    type: object
+  request.CandidateRegistrationRequest:
+    properties:
+      election_no:
+        type: string
+      id:
+        type: string
+      name_candidate:
+        items:
+          type: string
+        type: array
+      signed_transaction:
+        type: string
+    type: object
+  response.CandidateActivation:
+    properties:
+      is_active:
+        type: boolean
+    type: object
+  response.CandidateResponse:
+    properties:
+      election_no:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name_candidate:
+        items:
+          type: string
+        type: array
+      vote_count:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: Election Management Service.
+  title: Election Service
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Ping to check health
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.jsonResponse'
+      summary: Ping
+      tags:
+      - Health
+  /v1/election/activate:
+    post:
+      consumes:
+      - application/json
+      description: Activate Candidate
+      parameters:
+      - description: Activate Request
+        in: body
+        name: candidate
+        required: true
+        schema:
+          $ref: '#/definitions/request.CandidateActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.CandidateActivation'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/candidate/{no}:
+    get:
+      consumes:
+      - application/json
+      description: Get Candidate By No
+      parameters:
+      - description: Election No
+        in: path
+        name: "no"
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.CandidateResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/candidates:
+    get:
+      consumes:
+      - application/json
+      description: Get All Candidate
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.CandidateResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/register:
+    post:
+      consumes:
+      - application/json
+      description: Register Candidate
+      parameters:
+      - description: Register Request
+        in: body
+        name: candidate
+        required: true
+        schema:
+          $ref: '#/definitions/request.CandidateRegistrationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.CandidateResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+swagger: "2.0"
