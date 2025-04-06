@@ -8,7 +8,7 @@ CREATE TABLE "candidates"(
     is_deleted bool NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE "candidate_detail" (
+CREATE TABLE "candidate _detail" (
     id uuid NOT NULL PRIMARY KEY,
     candidate_id uuid NOT NULL,
     biodata text NOT NULL,

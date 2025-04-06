@@ -51,6 +51,7 @@ const (
 	selectCandidate       = `SELECT %s FROM candidates %s WHERE TRUE %s`
 	updateCandidate       = `UPDATE candidates SET %s = WHERE TRUE %s`
 	updateCandidateDetail = `UPDATE candidate_detail SET %s = WHERE TRUE %s`
+	insertCandidateDetail = `INSERT INTO candidate_detail (id, candidate_id,biodata, visi, misi, program_kerja, , created_at, updated_at)`
 )
 
 func (e *ElectionRepository) InsertCandidate(ctx context.Context, candidate *model.Candidate, signedTransaction string) error {
@@ -351,6 +352,87 @@ func (e *ElectionRepository) UpsertCandidateDetail(ctx context.Context, detail *
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateCandidateDetail")
 	defer span.End()
 
+	var (
+		err  error
+		args []any
+	)
 	sqlTrx := utils.GetSqlTx(ctx)
 
+	var ownTransaction bool
+	if sqlTrx == nil {
+		var err error
+		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateCandidateDetail] Failed to begin transaction")
+			return err
+		}
+		ownTransaction = true
+
+		defer func() {
+			if err != nil && ownTransaction {
+				rollbackErr := sqlTrx.Rollback()
+				if rollbackErr != nil {
+					log.WithFields(log.Fields{
+						"error": rollbackErr,
+					}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateCandidateDetail] Failed to rollback transaction")
+				}
+			}
+		}()
+	}
+
+	var count int
+	existQuery := `SELECT COUNT(*) FROM candidate_detail WHERE id = $1 AND candidate_id = $2 and is_deleted = false`
+	err = sqlTrx.GetContext(ctx, &count, existQuery, id, candidateId)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateCandidateDetail] Failed to check candidate detail")
+		return err
+	}
+
+	if count > 0 {
+		setQuery := "biodata = $1, visi = $2, misi = $3, program_kerja = $4, updated_at = $5"
+		whereQuery := " AND id = $6 AND candidate_id = $7 AND is_deleted = false"
+		args = append(args, detail.Biodata, detail.Visi, detail.Misi, detail.ProgramKerja, detail.UpdatedAt, id, candidateId)
+
+		query := fmt.Sprintf(updateCandidateDetail, setQuery, whereQuery)
+
+		_, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		_, err = sqlTrx.ExecContext(ctx, insertCandidateDetail, detail.ID, candidateId, detail.Biodata, detail.Visi, detail.Misi, detail.ProgramKerja, detail.CreatedAt, detail.UpdatedAt)
+	}
+
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			switch pqErr.Code {
+			case "23505":
+				log.WithFields(log.Fields{
+					"error": err,
+					"detai": detail,
+				}).ErrorWithCtx(ctx, "[ElectionRepository.UpsertCandidateDetail] Duplicate candidate detail")
+				return ErrDuplicate
+			}
+		}
+
+		log.WithFields(log.Fields{
+			"error":  err,
+			"detail": detail,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpsertCandidateDetail] Failed to upsert candidate detail")
+		return err
+	}
+
+	if ownTransaction {
+		if err := sqlTrx.Commit(); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.UpsertCandidateDetail] Failed to commit transaction")
+			return err
+		}
+	}
+
+	return nil
 }
