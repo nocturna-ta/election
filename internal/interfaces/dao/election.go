@@ -5,65 +5,93 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/nocturna-ta/election/internal/domain/model"
 	"github.com/nocturna-ta/election/internal/domain/repository"
 	utils2 "github.com/nocturna-ta/election/pkg/utils"
 	"github.com/nocturna-ta/golib/database/sql"
+	"github.com/nocturna-ta/golib/ethereum"
 	"github.com/nocturna-ta/golib/log"
 	"github.com/nocturna-ta/golib/tracing"
 	"github.com/nocturna-ta/golib/txmanager/utils"
 	"github.com/nocturna-ta/votechain-contract/binding"
+	"github.com/nocturna-ta/votechain-contract/interfaces"
 )
 
 type ElectionRepository struct {
 	db       *sql.Store
-	contract *binding.Votechain
-	client   *ethclient.Client
+	contract interfaces.IVotechain
+	client   ethereum.Client
 }
 
 type OptsElectionRepository struct {
 	DB              *sql.Store
 	ContractAddress common.Address
-	Client          *ethclient.Client
+	Contract        interfaces.IVotechain
+	Client          ethereum.Client
 }
 
 func NewElectionRepository(opts *OptsElectionRepository) repository.ElectionRepository {
-	contract, err := binding.NewVotechain(opts.ContractAddress, opts.Client)
+	var contractIneterface interfaces.IVotechain
+	contract, err := binding.NewVotechain(opts.ContractAddress, opts.Client.GetEthClient())
 	if err != nil {
 		return nil
 	}
-
+	contractIneterface = contract
 	return &ElectionRepository{
 		db:       opts.DB,
-		contract: contract,
+		contract: contractIneterface,
 		client:   opts.Client,
 	}
 }
 
 const (
-	insertCandidate = `INSERT INTO candidates (id, name, election_no, is_active, created_at, updated_at)`
-	selectCandidate = `SELECT %s FROM candidates %s WHERE TRUE %s`
-	updateCandidate = `UPDATE candidates SET %s = WHERE TRUE %s`
+	insertCandidate       = `INSERT INTO candidates (id, name, election_no, is_active, created_at, updated_at)`
+	selectCandidate       = `SELECT %s FROM candidates %s WHERE TRUE %s`
+	updateCandidate       = `UPDATE candidates SET %s = WHERE TRUE %s`
+	updateCandidateDetail = `UPDATE candidate_detail SET %s = WHERE TRUE %s`
 )
 
 func (e *ElectionRepository) InsertCandidate(ctx context.Context, candidate *model.Candidate, signedTransaction string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.InsertCandidate")
 	defer span.End()
 
-	var (
-		err error
-	)
+	tx, err := utils2.StringToTx(signedTransaction)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to convert string to transaction")
+		return err
+	}
 
 	sqlTrx := utils.GetSqlTx(ctx)
 
-	if sqlTrx != nil {
-		_, err = sqlTrx.ExecContext(ctx, insertCandidate, candidate.ID, candidate.NameCandidate, candidate.ElectionNo, candidate.IsActive, candidate.CreatedAt, candidate.UpdatedAt)
-	} else {
-		_, err = e.db.GetMaster().ExecContext(ctx, insertCandidate, candidate.ID, candidate.NameCandidate, candidate.ElectionNo, candidate.IsActive, candidate.CreatedAt, candidate.UpdatedAt)
+	var ownTransaction bool
+	if sqlTrx == nil {
+		var err error
+		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to begin transaction")
+			return err
+		}
+		ownTransaction = true
+
+		defer func() {
+			if err != nil && ownTransaction {
+				rollbackErr := sqlTrx.Rollback()
+				if rollbackErr != nil {
+					log.WithFields(log.Fields{
+						"error": rollbackErr,
+					}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to rollback transaction")
+				}
+			}
+		}()
 	}
 
+	_, err = sqlTrx.ExecContext(ctx, insertCandidate, candidate.ID, candidate.NameCandidate, candidate.ElectionNo, candidate.IsActive, candidate.CreatedAt, candidate.UpdatedAt)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
@@ -83,20 +111,30 @@ func (e *ElectionRepository) InsertCandidate(ctx context.Context, candidate *mod
 		return err
 	}
 
-	tx, err := utils2.StringToTx(signedTransaction)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to convert string to transaction")
-		return err
-	}
-
 	err = e.client.SendTransaction(ctx, tx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to send transaction")
+
+		if ownTransaction {
+			rollbackErr := sqlTrx.Rollback()
+			if rollbackErr != nil {
+				log.WithFields(log.Fields{
+					"error": rollbackErr,
+				}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to rollback transaction")
+			}
+		}
 		return err
+	}
+
+	if ownTransaction {
+		if err := sqlTrx.Commit(); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.InsertCandidate] Failed to commit transaction")
+			return err
+		}
 	}
 
 	return nil
@@ -213,10 +251,41 @@ func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string, s
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.CandidateActivate")
 	defer span.End()
 
+	tx, err := utils2.StringToTx(signedTransaction)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to convert string to transaction")
+		return err
+	}
+
 	sqlTrx := utils.GetSqlTx(ctx)
 
+	var ownTransaction bool
+	if sqlTrx == nil {
+		var err error
+		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to begin transaction")
+			return err
+		}
+		ownTransaction = true
+
+		defer func() {
+			if err != nil && ownTransaction {
+				rollbackErr := sqlTrx.Rollback()
+				if rollbackErr != nil {
+					log.WithFields(log.Fields{
+						"error": rollbackErr,
+					}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to rollback transaction")
+				}
+			}
+		}()
+	}
+
 	var (
-		err  error
 		args []any
 	)
 
@@ -241,11 +310,7 @@ func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string, s
 
 	query := fmt.Sprintf(updateCandidate, setQuery, whereQuery)
 
-	if sqlTrx != nil {
-		_, err = sqlTrx.ExecContext(ctx, query, args...)
-	} else {
-		_, err = e.db.GetMaster().ExecContext(ctx, query, args...)
-	}
+	_, err = sqlTrx.ExecContext(ctx, query, args...)
 
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -254,20 +319,38 @@ func (e *ElectionRepository) CandidateActivate(ctx context.Context, id string, s
 		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to activate candidate")
 		return err
 	}
-	tx, err := utils2.StringToTx(signedTransaction)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to convert string to transaction")
-		return err
-	}
 
 	err = e.client.SendTransaction(ctx, tx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to send transaction")
+		if ownTransaction {
+			rollbackErr := sqlTrx.Rollback()
+			if rollbackErr != nil {
+				log.WithFields(log.Fields{
+					"error": rollbackErr,
+				}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to rollback transaction")
+			}
+		}
 		return err
 	}
+
+	if ownTransaction {
+		if err := sqlTrx.Commit(); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository.CandidateActivate] Failed to commit transaction")
+			return err
+		}
+	}
 	return nil
+}
+
+func (e *ElectionRepository) UpsertCandidateDetail(ctx context.Context, detail *model.CandidateDetail, id uuid.UUID, candidateId uuid.UUID) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateCandidateDetail")
+	defer span.End()
+
+	sqlTrx := utils.GetSqlTx(ctx)
+
 }

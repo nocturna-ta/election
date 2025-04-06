@@ -3,12 +3,13 @@ package server
 import (
 	"context"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases"
 	"github.com/nocturna-ta/election/internal/usecases/election"
 	"github.com/nocturna-ta/golib/database/sql"
+	"github.com/nocturna-ta/golib/ethereum"
+	"github.com/nocturna-ta/golib/event"
 	"github.com/nocturna-ta/golib/log"
 	"github.com/nocturna-ta/golib/txmanager"
 	txSql "github.com/nocturna-ta/golib/txmanager/sql"
@@ -20,9 +21,10 @@ type container struct {
 }
 
 type options struct {
-	Cfg    *config.MainConfig
-	DB     *sql.Store
-	Client *ethclient.Client
+	Cfg       *config.MainConfig
+	DB        *sql.Store
+	Client    ethereum.Client
+	Publisher event.Publisher
 }
 
 func newContainer(opts *options) *container {

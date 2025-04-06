@@ -39,6 +39,25 @@ type (
 	EncryptionConfig struct {
 		Key string `yaml:"Key" env:"ENCRYPTION_KEY"`
 	}
+	KafkaConfig struct {
+		Producer KafkaProducerConfig `yaml:"Producer" env:"KAFKA_PRODUCER"`
+		Topics   KafkaTopics         `yaml:"Topics" env:"KAFKA_TOPIC"`
+	}
+	KafkaProducerConfig struct {
+		Brokers    []string `yaml:"Brokers" env:"KAFKA_BROKERS"`
+		Idempotent bool     `yaml:"Idempotent" env:"KAFKA_IDEMPOTENT"`
+		MaxAttempt int      `yaml:"MaxAttempt" env:"KAFKA_MAX_ATTEMPTS"`
+	}
+
+	KafkaTopics struct {
+		MasterDataElection KafkaTopicConfig `yaml:"MasterDataElection"`
+	}
+
+	KafkaTopicConfig struct {
+		Value        string `yaml:"Value" env:"KAFKA_TOPIC_VALUE"`
+		ErrorHandler string `yaml:"ErrorHandler"`
+		WithBackOff  bool   `yaml:"WithBackOff"`
+	}
 )
 
 func ReadConfig(cfg any, configLocation string) {

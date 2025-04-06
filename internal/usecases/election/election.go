@@ -7,6 +7,7 @@ import (
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
+	"github.com/nocturna-ta/election/pkg/constants"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
@@ -22,19 +23,36 @@ func (m *Module) RegisterCandidate(ctx context.Context, req *request.CandidateRe
 		candidate *model.Candidate
 	)
 
-	if err := m.electionRepo.InsertCandidate(ctx, candidate, req.SignedTransaction); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "Failed to insert candidate")
+	transaction := func(txCtx context.Context) (any, error) {
+		candidate = model.ConstructRegistration(req)
+
+		errTx := m.electionRepo.InsertCandidate(txCtx, candidate, req.SignedTransaction)
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrDuplicate) {
+				return nil, &custerr.ErrChain{
+					Message: "Election already exists",
+					Code:    400,
+					Cause:   errTx,
+					Type:    response2.ErrBadRequest,
+				}
+			}
+			return nil, errTx
+		}
+
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElection.Value, candidate.ID.String(), candidate.ToMessageModel(), map[string]any{
+			constants.MetaDataOperation: constants.Create,
+		})
+
+		if errTx != nil {
+			return nil, errTx
+		}
+
+		return nil, nil
 	}
 
-	if errors.Is(err, dao.ErrDuplicate) {
-		return nil, &custerr.ErrChain{
-			Message: "Duplicate candidate",
-			Code:    400,
-			Type:    response2.ErrBadRequest,
-			Cause:   err,
-		}
+	_, err = m.txMgr.Execute(ctx, transaction, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	return &response.CandidateResponse{

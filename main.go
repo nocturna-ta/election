@@ -1,4 +1,4 @@
-package election
+package main
 
 import "github.com/nocturna-ta/election/cmd"
 

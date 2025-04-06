@@ -9,8 +9,8 @@ API:
   EnableSwagger: true
 
 Database:
-  SlaveDSN: "postgres://postgres:1235813@localhost:5432/election?sslmode=disable"
-  MasterDSN: "postgres://postgres:1235813@localhost:5432/election?sslmode=disable"
+  SlaveDSN: "postgres://postgres:1235813@localhost:5433/elections?sslmode=disable"
+  MasterDSN: "postgres://postgres:1235813@localhost:5433/elections?sslmode=disable"
   RetryInterval: 10
   MaxIdleConn: 10
   MaxConn: 10
