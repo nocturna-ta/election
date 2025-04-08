@@ -11,3 +11,12 @@ type CandidateResponse struct {
 type CandidateActivation struct {
 	IsActive bool `json:"is_active"`
 }
+
+type CandidateDetailResponse struct {
+	ID           string `json:"id"`
+	CandidateID  string `json:"candidate_id"`
+	Biodata      string `json:"biodata"`
+	Visi         string `json:"visi"`
+	Misi         string `json:"misi"`
+	ProgramKerja string `json:"program_kerja"`
+}

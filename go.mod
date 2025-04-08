@@ -54,7 +54,7 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/newrelic/go-agent/v3 v3.35.0 // indirect
 	github.com/newrelic/go-agent/v3/integrations/nrmysql v1.2.2 // indirect
-	github.com/nocturna-ta/common-model v1.1.0 // indirect
+	github.com/nocturna-ta/common-model v1.2.0 // indirect
 	github.com/nocturna-ta/votechain-contract v1.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect

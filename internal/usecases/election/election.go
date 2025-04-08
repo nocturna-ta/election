@@ -3,6 +3,7 @@ package election
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/nocturna-ta/election/internal/domain/model"
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases/request"
@@ -15,7 +16,7 @@ import (
 )
 
 func (m *Module) RegisterCandidate(ctx context.Context, req *request.CandidateRegistrationRequest) (*response.CandidateResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UseCases.election.RegisterCandidate")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.RegisterCandidate")
 	defer span.End()
 
 	var (
@@ -65,7 +66,7 @@ func (m *Module) RegisterCandidate(ctx context.Context, req *request.CandidateRe
 }
 
 func (m *Module) GetAllCandidate(ctx context.Context) (*[]response.CandidateResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UseCases.election.GetAllCandidate")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetAllCandidate")
 	defer span.End()
 
 	candidates, err := m.electionRepo.GetAllCandidate(ctx)
@@ -91,7 +92,7 @@ func (m *Module) GetAllCandidate(ctx context.Context) (*[]response.CandidateResp
 }
 
 func (m *Module) GetCandidateByNo(ctx context.Context, no string) (*response.CandidateResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UseCases.election.GetCandidateByNo")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetCandidateByNo")
 	defer span.End()
 
 	candidate, err := m.electionRepo.GetCandidateByNo(ctx, no)
@@ -113,7 +114,7 @@ func (m *Module) GetCandidateByNo(ctx context.Context, no string) (*response.Can
 }
 
 func (m *Module) ActivateCandidate(ctx context.Context, req *request.CandidateActivationRequest) (*response.CandidateActivation, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UseCases.election.ActivateCandidate")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.ActivateCandidate")
 	defer span.End()
 
 	if err := m.electionRepo.CandidateActivate(ctx, req.ID, req.SignedTransaction); err != nil {
@@ -126,4 +127,54 @@ func (m *Module) ActivateCandidate(ctx context.Context, req *request.CandidateAc
 	return &response.CandidateActivation{
 		IsActive: true,
 	}, nil
+}
+
+func (m *Module) UpsertCandidateDetail(ctx context.Context, req *request.CandidateDetailRequest) (*response.CandidateDetailResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.UpsertCandidateDetail")
+	defer span.End()
+
+	var (
+		detail *model.CandidateDetail
+	)
+
+	transaction := func(txCtx context.Context) (any, error) {
+		detail = model.ConstructUpsertCandidateDetail(req)
+
+		errTx := m.electionRepo.UpsertCandidateDetail(txCtx, detail, uuid.MustParse(req.ID), uuid.MustParse(req.CandidateID))
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrDuplicate) {
+				return nil, &custerr.ErrChain{
+					Message: "Detail for this candidate already exists",
+					Cause:   errTx,
+					Code:    400,
+					Type:    response2.ErrBadRequest,
+				}
+			}
+			return nil, errTx
+		}
+
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElectionDetail.Value, detail.ID.String(), detail.ToMessageModel(), map[string]any{
+			constants.MetaDataOperation: constants.Update,
+		})
+
+		if errTx != nil {
+			return nil, errTx
+		}
+
+		return nil, nil
+	}
+
+	_, err := m.txMgr.Execute(ctx, transaction, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.CandidateDetailResponse{
+		ID:           detail.ID.String(),
+		CandidateID:  detail.CandidateID.String(),
+		Biodata:      detail.Biodata,
+		Visi:         detail.Visi,
+		Misi:         detail.Misi,
+		ProgramKerja: detail.ProgramKerja,
+	}, err
 }

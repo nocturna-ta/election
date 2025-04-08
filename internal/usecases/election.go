@@ -11,4 +11,5 @@ type ElectionUseCases interface {
 	GetAllCandidate(ctx context.Context) (*[]response.CandidateResponse, error)
 	GetCandidateByNo(ctx context.Context, no string) (*response.CandidateResponse, error)
 	ActivateCandidate(ctx context.Context, req *request.CandidateActivationRequest) (*response.CandidateActivation, error)
+	UpsertCandidateDetail(ctx context.Context, req *request.CandidateDetailRequest) (*response.CandidateDetailResponse, error)
 }

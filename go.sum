@@ -113,6 +113,8 @@ github.com/newrelic/go-agent/v3/integrations/nrmysql v1.2.2 h1:JtaJdL4y1hj5mH0JA
 github.com/newrelic/go-agent/v3/integrations/nrmysql v1.2.2/go.mod h1:0JZ1gqlaBi9FUrQsg9LLZR357oDH4fGYYTbQQPhOd8o=
 github.com/nocturna-ta/common-model v1.1.0 h1:vo5w/HR31eBAJdsBTh/ANPzDQ6+yzj5xewNZU52JueA=
 github.com/nocturna-ta/common-model v1.1.0/go.mod h1:ri/K6cjFoDwvTB0y6YVSE9vWpp1RPMOOenfLj+2qVPY=
+github.com/nocturna-ta/common-model v1.2.0 h1:yzhvcTFKZcGiG+2KmDSvpE0/Ms8Q8DnkTEcuxX9tdSg=
+github.com/nocturna-ta/common-model v1.2.0/go.mod h1:ri/K6cjFoDwvTB0y6YVSE9vWpp1RPMOOenfLj+2qVPY=
 github.com/nocturna-ta/golib v1.0.3 h1:D7nGelWSFlKplarHFanprpuigxpd1+0G5qZsLmcmhvM=
 github.com/nocturna-ta/golib v1.0.3/go.mod h1:PHxSA/fkpTUgKvYKNXNkBtalgiBz9Jd9fgoWbO/uOMM=
 github.com/nocturna-ta/golib v1.1.3 h1:Vt4vbVmXTD/YsZsWIgQncc9NLQXhDlrmHJkC8uC8svE=

@@ -50,7 +50,8 @@ type (
 	}
 
 	KafkaTopics struct {
-		MasterDataElection KafkaTopicConfig `yaml:"MasterDataElection"`
+		MasterDataElection       KafkaTopicConfig `yaml:"MasterDataElection"`
+		MasterDataElectionDetail KafkaTopicConfig `yaml:"masterDataElectionDetail"`
 	}
 
 	KafkaTopicConfig struct {

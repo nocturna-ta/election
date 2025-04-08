@@ -18,6 +18,15 @@ type CandidateActivationRequest struct {
 	SignedTransaction string `json:"signed_transaction"`
 }
 
+type CandidateDetailRequest struct {
+	ID           string `json:"id"`
+	CandidateID  string `json:"candidate_id"`
+	Biodata      string `json:"biodata"`
+	Visi         string `json:"visi"`
+	Misi         string `json:"misi"`
+	ProgramKerja string `json:"program_kerja"`
+}
+
 func (req *CandidateRegistrationRequest) ValidateRegistrationRequest() error {
 	if req == nil {
 		return &custerr.ErrChain{
