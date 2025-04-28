@@ -10,29 +10,31 @@ import (
 	"github.com/nocturna-ta/golib/tracing"
 )
 
-// RegisterCandidate godoc
+// RegisterElectionPair godoc
 // @Summary 	Election
-// @Description	Register Candidate
+// @Description	Register Election Pair (President and Vice President)
 // @Tags		Election
 // @Accept		json
-// @Param 		candidate body request.CandidateRegistrationRequest true "Register Request"
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
+// @Param 		pair body request.ElectionPairRegistrationRequest true "Registration Request"
 // @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.CandidateResponse}
-// @Router		/v1/election/register	[post]
-func (api *API) RegisterCandidate(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.RegisterCandidate")
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairResponse}
+// @Router		/v1/election/pairs/register	[post]
+func (api *API) RegisterElectionPair(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.RegisterElectionPair")
 	defer span.End()
 
-	var regisReq request.CandidateRegistrationRequest
-	err := json.Unmarshal(req.RawBody(), &regisReq)
-
+	var regReq request.ElectionPairRegistrationRequest
+	err := json.Unmarshal(req.RawBody(), &regReq)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	err = regisReq.ValidateRegistrationRequest()
+	err = regReq.ValidateRegistrationRequest()
 
-	res, err := api.electionUc.RegisterCandidate(ctx, &regisReq)
+	res, err := api.electionUc.RegisterElectionPair(ctx, &regReq)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
@@ -40,42 +42,25 @@ func (api *API) RegisterCandidate(ctx context.Context, req *router.Request) (*re
 	return rest.NewJSONResponse().SetData(res), nil
 }
 
-// GetAllCandidate godoc
+// GetElectionPairByNo godoc
 // @Summary 	Election
-// @Description	Get All Candidate
+// @Description	Get Election Pair By Number
 // @Tags		Election
 // @Accept		json
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
+// @Param 		no path string true "Election Number"
 // @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.CandidateResponse}
-// @Router		/v1/election/candidates	[get]
-func (api *API) GetAllCandidate(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetAllCandidate")
-	defer span.End()
-
-	res, err := api.electionUc.GetAllCandidate(ctx)
-	if err != nil {
-		return cutresp.CustomErrorResponse(err)
-	}
-
-	return rest.NewJSONResponse().SetData(res), nil
-}
-
-// GetCandidateByNo godoc
-// @Summary 	Election
-// @Description	Get Candidate By No
-// @Tags		Election
-// @Accept		json
-// @Param 		no path string true "Election No"
-// @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.CandidateResponse}
-// @Router		/v1/election/candidate/{no}	[get]
-func (api *API) GetCandidateByNo(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetCandidateByNo")
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairResponse}
+// @Router		/v1/election/pairs/number/{no}	[get]
+func (api *API) GetElectionPairByNo(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairByNo")
 	defer span.End()
 
 	no := req.Params("no")
 
-	res, err := api.electionUc.GetCandidateByNo(ctx, no)
+	res, err := api.electionUc.GetElectionPairByNo(ctx, no)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
@@ -83,29 +68,74 @@ func (api *API) GetCandidateByNo(ctx context.Context, req *router.Request) (*res
 	return rest.NewJSONResponse().SetData(res), nil
 }
 
-// ActivateCandidate godoc
+// GetAllElectionPairs godoc
 // @Summary 	Election
-// @Description	Activate Candidate
+// @Description	Get All Election Pairs
 // @Tags		Election
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
 // @Accept		json
-// @Param 		candidate body request.CandidateActivationRequest true "Activate Request"
 // @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.CandidateActivation}
-// @Router		/v1/election/activate	[post]
-func (api *API) ActivateCandidate(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.ActivateCandidate")
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairListResponse}
+// @Router		/v1/election/pairs	[get]
+func (api *API) GetAllElectionPairs(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetAllElectionPairs")
 	defer span.End()
 
-	var actReq request.CandidateActivationRequest
-	err := json.Unmarshal(req.RawBody(), &actReq)
-
+	res, err := api.electionUc.GetAllElectionPairs(ctx)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	err = actReq.ValidateActivationRequest()
+	return rest.NewJSONResponse().SetData(res), nil
+}
 
-	res, err := api.electionUc.ActivateCandidate(ctx, &actReq)
+// GetElectionPairByID godoc
+// @Summary 	Election
+// @Description	Get Election Pair By ID
+// @Tags		Election
+// @Accept		json
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
+// @Param 		id path string true "Election Pair ID"
+// @Produce		json
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairResponse}
+// @Router		/v1/election/pairs/{id}	[get]
+func (api *API) GetElectionPairByID(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairByID")
+	defer span.End()
+
+	id := req.Params("id")
+
+	res, err := api.electionUc.GetElectionPairByID(ctx, id)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	return rest.NewJSONResponse().SetData(res), nil
+}
+
+// GetElectionPairDetail godoc
+// @Summary 	Election Detail
+// @Description	Get Election Pair Detail
+// @Tags		Election
+// @Accept		json
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
+// @Param 		pairID path string true "Election Pair ID"
+// @Produce		json
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairDetailResponse}
+// @Router		/v1/election/pairs/{pairID}/detail	[get]
+func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairDetail")
+	defer span.End()
+
+	pairID := req.Params("pairID")
+
+	res, err := api.electionUc.GetElectionPairDetail(ctx, pairID)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}

@@ -6,28 +6,38 @@ import (
 	"github.com/nocturna-ta/golib/response"
 )
 
-type CandidateRegistrationRequest struct {
-	ID                string   `json:"id"`
-	NameCandidate     []string `json:"name_candidate"`
-	ElectionNo        string   `json:"election_no"`
-	SignedTransaction string   `json:"signed_transaction"`
+type CandidateInfoRequest struct {
+	FullName           string `json:"full_name"`
+	EducationHistory   string `json:"education_history"`
+	WorkExperience     string `json:"work_experience"`
+	LegalRecordHistory string `json:"legal_record_history"`
+	PhotoPath          string `json:"photo_path"`
 }
 
-type CandidateActivationRequest struct {
+type ElectionPairRegistrationRequest struct {
+	ID                string               `json:"id"`
+	ElectionNo        string               `json:"election_no"`
+	PairPhotoPath     string               `json:"pair_photo_path"`
+	President         CandidateInfoRequest `json:"president"`
+	VicePresident     CandidateInfoRequest `json:"vice_president"`
+	SignedTransaction string               `json:"signed_transaction"`
+}
+
+type ElectionPairActivationRequest struct {
 	ID                string `json:"id"`
 	SignedTransaction string `json:"signed_transaction"`
 }
 
-type CandidateDetailRequest struct {
-	ID           string `json:"id"`
-	CandidateID  string `json:"candidate_id"`
-	Biodata      string `json:"biodata"`
-	Visi         string `json:"visi"`
-	Misi         string `json:"misi"`
-	ProgramKerja string `json:"program_kerja"`
+type ElectionPairDetailRequest struct {
+	ID             string   `json:"id"`
+	ElectionPairID string   `json:"election_pair_id"`
+	Vision         string   `json:"vision"`
+	Mission        string   `json:"mission"`
+	WorkProgram    string   `json:"work_program"`
+	ProgramDocs    []string `json:"program_docs"`
 }
 
-func (req *CandidateRegistrationRequest) ValidateRegistrationRequest() error {
+func (req *ElectionPairRegistrationRequest) ValidateRegistrationRequest() error {
 	if req == nil {
 		return &custerr.ErrChain{
 			Message: "Request cannot be nil",
@@ -38,27 +48,39 @@ func (req *CandidateRegistrationRequest) ValidateRegistrationRequest() error {
 
 	if utils.IsNotUUID(req.ID) {
 		return &custerr.ErrChain{
-			Message: "ID is not valid",
+			Message: "ID is not a valid UUID",
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		}
 	}
 
-	return nil
-}
-
-func (req *CandidateActivationRequest) ValidateActivationRequest() error {
-	if req == nil {
+	if req.ElectionNo == "" {
 		return &custerr.ErrChain{
-			Message: "Request cannot be nil",
+			Message: "Election number cannot be empty",
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		}
 	}
 
-	if utils.IsNotUUID(req.ID) {
+	if req.President.FullName == "" {
 		return &custerr.ErrChain{
-			Message: "ID is not valid",
+			Message: "President candidate name cannot be empty",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if req.VicePresident.FullName == "" {
+		return &custerr.ErrChain{
+			Message: "Vice President candidate name cannot be empty",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if req.SignedTransaction == "" {
+		return &custerr.ErrChain{
+			Message: "Signed transaction cannot be empty",
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		}

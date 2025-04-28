@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/gofiber/swagger"
+	_ "github.com/nocturna-ta/election/docs"
 	"github.com/nocturna-ta/election/internal/usecases"
 	"github.com/nocturna-ta/golib/router"
 	"time"
@@ -54,5 +55,17 @@ func (api *API) RegisterRoute() *router.FastRouter {
 
 	myRouter.GET("/health", api.Ping, router.MustAuthorized(false))
 
+	myRouter.Group("/v1", func(v1 *router.FastRouter) {
+		v1.Group("/election", func(election *router.FastRouter) {
+			v1.Group("/pairs", func(pairs *router.FastRouter) {
+				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
+				pairs.GET("/:id", api.GetElectionPairByID, router.MustAuthorized(false))
+				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))
+				pairs.POST("/register", api.RegisterElectionPair, router.MustAuthorized(false))
+				//pairs.POST("/activate", api.ActivateElectionPair, router.MustAuthorized(false))
+				//pairs.GET("/:id/full", api.GetElectionPairFull, router.MustAuthorized(false))
+			})
+		})
+	})
 	return myRouter
 }

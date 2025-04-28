@@ -14,6 +14,10 @@ migrate-up:
 	@echo ">> Running Migrate Up"
 	@migrate -path db/migrations -database "postgres://postgres:1235813@localhost:5433/elections?sslmode=disable" up
 
+migrate-down:
+	@echo ">> Running Migrate Up"
+	@migrate -path db/migrations -database "postgres://postgres:1235813@localhost:5433/elections?sslmode=disable" down
+
 remock:
 	#https://github.com/vektra/mockery
 	@echo ">> Mock Repositories"

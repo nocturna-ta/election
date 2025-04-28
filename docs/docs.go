@@ -39,9 +39,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/election/activate": {
-            "post": {
-                "description": "Activate Candidate",
+        "/v1/election/pairs": {
+            "get": {
+                "description": "Get All Election Pairs",
                 "consumes": [
                     "application/json"
                 ],
@@ -54,13 +54,22 @@ const docTemplate = `{
                 "summary": "Election",
                 "parameters": [
                     {
-                        "description": "Activate Request",
-                        "name": "candidate",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.CandidateActivationRequest"
-                        }
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -75,7 +84,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.CandidateActivation"
+                                            "$ref": "#/definitions/response.ElectionPairListResponse"
                                         }
                                     }
                                 }
@@ -85,9 +94,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/election/candidate/{no}": {
+        "/v1/election/pairs/number/{no}": {
             "get": {
-                "description": "Get Candidate By No",
+                "description": "Get Election Pair By Number",
                 "consumes": [
                     "application/json"
                 ],
@@ -101,7 +110,25 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Election No",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Number",
                         "name": "no",
                         "in": "path",
                         "required": true
@@ -119,7 +146,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.CandidateResponse"
+                                            "$ref": "#/definitions/response.ElectionPairResponse"
                                         }
                                     }
                                 }
@@ -129,44 +156,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/election/candidates": {
-            "get": {
-                "description": "Get All Candidate",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Election"
-                ],
-                "summary": "Election",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/controller.jsonResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/response.CandidateResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/election/register": {
+        "/v1/election/pairs/register": {
             "post": {
-                "description": "Register Candidate",
+                "description": "Register Election Pair (President and Vice President)",
                 "consumes": [
                     "application/json"
                 ],
@@ -179,12 +171,30 @@ const docTemplate = `{
                 "summary": "Election",
                 "parameters": [
                     {
-                        "description": "Register Request",
-                        "name": "candidate",
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Registration Request",
+                        "name": "pair",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.CandidateRegistrationRequest"
+                            "$ref": "#/definitions/request.ElectionPairRegistrationRequest"
                         }
                     }
                 ],
@@ -200,7 +210,131 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.CandidateResponse"
+                                            "$ref": "#/definitions/response.ElectionPairResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/election/pairs/{id}": {
+            "get": {
+                "description": "Get Election Pair By ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/election/pairs/{pairID}/detail": {
+            "get": {
+                "description": "Get Election Pair Detail",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election Detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "pairID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairDetailResponse"
                                         }
                                     }
                                 }
@@ -238,18 +372,27 @@ const docTemplate = `{
                 }
             }
         },
-        "request.CandidateActivationRequest": {
+        "request.CandidateInfoRequest": {
             "type": "object",
             "properties": {
-                "id": {
+                "education_history": {
                     "type": "string"
                 },
-                "signed_transaction": {
+                "full_name": {
+                    "type": "string"
+                },
+                "legal_record_history": {
+                    "type": "string"
+                },
+                "photo_path": {
+                    "type": "string"
+                },
+                "work_experience": {
                     "type": "string"
                 }
             }
         },
-        "request.CandidateRegistrationRequest": {
+        "request.ElectionPairRegistrationRequest": {
             "type": "object",
             "properties": {
                 "election_no": {
@@ -258,26 +401,81 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "name_candidate": {
+                "pair_photo_path": {
+                    "type": "string"
+                },
+                "president": {
+                    "$ref": "#/definitions/request.CandidateInfoRequest"
+                },
+                "signed_transaction": {
+                    "type": "string"
+                },
+                "vice_president": {
+                    "$ref": "#/definitions/request.CandidateInfoRequest"
+                }
+            }
+        },
+        "response.CandidateInfoResponse": {
+            "type": "object",
+            "properties": {
+                "education_history": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "legal_record_history": {
+                    "type": "string"
+                },
+                "photo_path": {
+                    "type": "string"
+                },
+                "work_experience": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.ElectionPairDetailResponse": {
+            "type": "object",
+            "properties": {
+                "election_pair_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mission": {
+                    "type": "string"
+                },
+                "program_docs": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "signed_transaction": {
+                "vision": {
+                    "type": "string"
+                },
+                "work_program": {
                     "type": "string"
                 }
             }
         },
-        "response.CandidateActivation": {
+        "response.ElectionPairListResponse": {
             "type": "object",
             "properties": {
-                "is_active": {
-                    "type": "boolean"
+                "pairs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.ElectionPairResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
-        "response.CandidateResponse": {
+        "response.ElectionPairResponse": {
             "type": "object",
             "properties": {
                 "election_no": {
@@ -289,11 +487,14 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
-                "name_candidate": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "pair_photo_path": {
+                    "type": "string"
+                },
+                "president": {
+                    "$ref": "#/definitions/response.CandidateInfoResponse"
+                },
+                "vice_president": {
+                    "$ref": "#/definitions/response.CandidateInfoResponse"
                 },
                 "vote_count": {
                     "type": "integer"

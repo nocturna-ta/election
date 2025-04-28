@@ -17,32 +17,74 @@ definitions:
       message:
         type: string
     type: object
-  request.CandidateActivationRequest:
+  request.CandidateInfoRequest:
     properties:
-      id:
+      education_history:
         type: string
-      signed_transaction:
+      full_name:
+        type: string
+      legal_record_history:
+        type: string
+      photo_path:
+        type: string
+      work_experience:
         type: string
     type: object
-  request.CandidateRegistrationRequest:
+  request.ElectionPairRegistrationRequest:
     properties:
       election_no:
         type: string
       id:
         type: string
-      name_candidate:
+      pair_photo_path:
+        type: string
+      president:
+        $ref: '#/definitions/request.CandidateInfoRequest'
+      signed_transaction:
+        type: string
+      vice_president:
+        $ref: '#/definitions/request.CandidateInfoRequest'
+    type: object
+  response.CandidateInfoResponse:
+    properties:
+      education_history:
+        type: string
+      full_name:
+        type: string
+      legal_record_history:
+        type: string
+      photo_path:
+        type: string
+      work_experience:
+        type: string
+    type: object
+  response.ElectionPairDetailResponse:
+    properties:
+      election_pair_id:
+        type: string
+      id:
+        type: string
+      mission:
+        type: string
+      program_docs:
         items:
           type: string
         type: array
-      signed_transaction:
+      vision:
+        type: string
+      work_program:
         type: string
     type: object
-  response.CandidateActivation:
+  response.ElectionPairListResponse:
     properties:
-      is_active:
-        type: boolean
+      pairs:
+        items:
+          $ref: '#/definitions/response.ElectionPairResponse'
+        type: array
+      total:
+        type: integer
     type: object
-  response.CandidateResponse:
+  response.ElectionPairResponse:
     properties:
       election_no:
         type: string
@@ -50,10 +92,12 @@ definitions:
         type: string
       is_active:
         type: boolean
-      name_candidate:
-        items:
-          type: string
-        type: array
+      pair_photo_path:
+        type: string
+      president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      vice_president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
       vote_count:
         type: integer
     type: object
@@ -78,18 +122,24 @@ paths:
       summary: Ping
       tags:
       - Health
-  /v1/election/activate:
-    post:
+  /v1/election/pairs:
+    get:
       consumes:
       - application/json
-      description: Activate Candidate
+      description: Get All Election Pairs
       parameters:
-      - description: Activate Request
-        in: body
-        name: candidate
-        required: true
-        schema:
-          $ref: '#/definitions/request.CandidateActivationRequest'
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
       produces:
       - application/json
       responses:
@@ -100,18 +150,106 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateActivation'
+                  $ref: '#/definitions/response.ElectionPairListResponse'
               type: object
       summary: Election
       tags:
       - Election
-  /v1/election/candidate/{no}:
+  /v1/election/pairs/{id}:
     get:
       consumes:
       - application/json
-      description: Get Candidate By No
+      description: Get Election Pair By ID
       parameters:
-      - description: Election No
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/pairs/{pairID}/detail:
+    get:
+      consumes:
+      - application/json
+      description: Get Election Pair Detail
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: pairID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairDetailResponse'
+              type: object
+      summary: Election Detail
+      tags:
+      - Election
+  /v1/election/pairs/number/{no}:
+    get:
+      consumes:
+      - application/json
+      description: Get Election Pair By Number
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Number
         in: path
         name: "no"
         required: true
@@ -126,43 +264,35 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateResponse'
+                  $ref: '#/definitions/response.ElectionPairResponse'
               type: object
       summary: Election
       tags:
       - Election
-  /v1/election/candidates:
-    get:
-      consumes:
-      - application/json
-      description: Get All Candidate
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/controller.jsonResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/response.CandidateResponse'
-              type: object
-      summary: Election
-      tags:
-      - Election
-  /v1/election/register:
+  /v1/election/pairs/register:
     post:
       consumes:
       - application/json
-      description: Register Candidate
+      description: Register Election Pair (President and Vice President)
       parameters:
-      - description: Register Request
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Registration Request
         in: body
-        name: candidate
+        name: pair
         required: true
         schema:
-          $ref: '#/definitions/request.CandidateRegistrationRequest'
+          $ref: '#/definitions/request.ElectionPairRegistrationRequest'
       produces:
       - application/json
       responses:
@@ -173,7 +303,7 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateResponse'
+                  $ref: '#/definitions/response.ElectionPairResponse'
               type: object
       summary: Election
       tags:
