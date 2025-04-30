@@ -30,7 +30,7 @@ type options struct {
 func newContainer(opts *options) *container {
 	electionRepo := dao.NewElectionRepository(&dao.OptsElectionRepository{
 		DB:              opts.DB,
-		ContractAddress: common.HexToAddress(opts.Cfg.Blockchain.ContractAddress),
+		ContractAddress: common.HexToAddress(opts.Cfg.Blockchain.ElectionManagerAddress),
 		Client:          opts.Client,
 	})
 

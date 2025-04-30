@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	sql2 "database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
@@ -50,17 +51,17 @@ func NewElectionRepository(opts *OptsElectionRepository) repository.ElectionRepo
 const (
 	insertElectionPair = `
 		INSERT INTO election_pairs (
-			id, election_no, vote_count, is_active, pair_photo_path,
-			president_full_name, president_education_history, president_work_experience, 
-			president_legal_record_history, president_photo_path,
-			vice_president_full_name, vice_president_education_history, vice_president_work_experience, 
-			vice_president_legal_record_history, vice_president_photo_path,
-			created_at, updated_at, is_deleted
+		id, election_no, vote_count, is_active, pair_photo_path, president_full_name,
+		president_education_history, president_work_experience, president_gender, president_birth_place,
+		president_birth_date, president_last_education, president_job, president_photo_path, vice_president_full_name,
+		vice_president_education_history, vice_president_work_experience, vice_president_gender, vice_president_birth_place,
+		vice_president_birth_date, vice_president_last_education, vice_president_job, vice_president_photo_path, created_at,
+		updated_at, is_deleted
 		) VALUES (
 			$1, $2, $3, $4, 
 			$5, $6, $7, $8, $9, 
 			$10, $11, $12, $13, $14,
-			$15, $16, $17,$18
+			$15, $16, $17,$18,$19,$20,$21,$22,$23,$24,$25,$26
 		)
 	`
 	selectElectionPair = `SELECT %s FROM election_pairs %s WHERE TRUE %s`
@@ -81,6 +82,38 @@ const (
 func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.InsertElectionPair")
 	defer span.End()
+
+	presidentEducationJSON, err := json.Marshal(pair.President.EducationHistory)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president education history")
+		return err
+	}
+
+	presidentWorkJSON, err := json.Marshal(pair.President.WorkExperience)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president work experience")
+		return err
+	}
+
+	vicePresidentEducationJSON, err := json.Marshal(pair.VicePresident.EducationHistory)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
+		return err
+	}
+
+	vicePresidentWorkJSON, err := json.Marshal(pair.VicePresident.WorkExperience)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
+		return err
+	}
 
 	tx, err := utils2.StringToTx(signedTransaction)
 	if err != nil {
@@ -124,14 +157,22 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		pair.IsActive,
 		pair.PairPhotoPath,
 		pair.President.FullName,
-		pair.President.EducationHistory,
-		pair.President.WorkExperience,
-		pair.President.LegalRecordHistory,
+		presidentEducationJSON,
+		presidentWorkJSON,
+		pair.President.Gender,
+		pair.President.BirthPlace,
+		pair.President.BirthDate,
+		pair.President.LastEducation,
+		pair.President.Job,
 		pair.President.PhotoPath,
 		pair.VicePresident.FullName,
-		pair.VicePresident.EducationHistory,
-		pair.VicePresident.WorkExperience,
-		pair.VicePresident.LegalRecordHistory,
+		vicePresidentEducationJSON,
+		vicePresidentWorkJSON,
+		pair.VicePresident.Gender,
+		pair.VicePresident.BirthPlace,
+		pair.VicePresident.BirthDate,
+		pair.VicePresident.LastEducation,
+		pair.VicePresident.Job,
 		pair.VicePresident.PhotoPath,
 		pair.CreatedAt,
 		pair.UpdatedAt,
@@ -192,9 +233,9 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 
 	sqlTrx := utils.GetSqlTx(ctx)
 	var (
-		electionPairModel model.ElectionPair
-		err               error
-		args              []any
+		electionPairModelDTO model.ElectionPairDTO
+		err                  error
+		args                 []any
 	)
 
 	electionPair, err := e.contract.GetElection(nil, id.String())
@@ -204,24 +245,23 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get election pair from contract")
 		return nil, err
 	}
-	selectQuery := `id, election_no, vote_count, is_active, 
-			president_full_name, president_education_history, president_work_experience, 
-			president_legal_record_history, president_photo_url,
-			vice_president_full_name, vice_president_education_history, vice_president_work_experience, 
-			vice_president_legal_record_history, vice_president_photo_url,
-			created_at, updated_at, is_deleted`
+
+	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+		president_full_name, president_education_history, president_work_experience, 
+		president_gender, president_birth_place, president_birth_date, president_last_education, 
+		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 
+		vice_president_work_experience, vice_president_gender, vice_president_birth_place, 
+		vice_president_birth_date, vice_president_last_education, vice_president_job, 
+		vice_president_photo_path, created_at, updated_at, is_deleted`
 	whereClause := ` AND id = $1 AND is_deleted = false`
 	joinQuery := ``
 	args = append(args, id)
 
-	electionPairModel.President = &model.CandidateInfo{}
-	electionPairModel.VicePresident = &model.CandidateInfo{}
-
 	query := fmt.Sprintf(selectElectionPair, selectQuery, joinQuery, whereClause)
 	if sqlTrx != nil {
-		err = sqlTrx.GetContext(ctx, &electionPairModel, query, args...)
+		err = sqlTrx.GetContext(ctx, &electionPairModelDTO, query, args...)
 	} else {
-		err = e.db.GetMaster().GetContext(ctx, &electionPairModel, query, args...)
+		err = e.db.GetMaster().GetContext(ctx, &electionPairModelDTO, query, args...)
 	}
 
 	if err != nil {
@@ -235,7 +275,7 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		return nil, ErrNoResult
 	}
 
-	if electionPair.Id != electionPairModel.ID.String() {
+	if electionPair.Id != electionPairModelDTO.ID.String() && electionPair.ElectionNo != electionPairModelDTO.ElectionNo {
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    id,
@@ -243,7 +283,15 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		return nil, ErrNoResult
 	}
 
-	return &electionPairModel, err
+	dtoToDomainElection, err := electionPairModelDTO.ToDomain()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert election pair model to domain")
+		return nil, err
+	}
+
+	return dtoToDomainElection, err
 }
 
 func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string) (*model.ElectionPair, error) {
@@ -252,9 +300,9 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 
 	sqlTrx := utils.GetSqlTx(ctx)
 	var (
-		electionPairModel model.ElectionPair
-		err               error
-		args              []any
+		electionPairModelDTO model.ElectionPairDTO
+		err                  error
+		args                 []any
 	)
 
 	electionPair, err := e.contract.GetElectionByNo(nil, no)
@@ -265,24 +313,22 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		return nil, err
 	}
 
-	selectQuery := `id, election_no, vote_count, is_active, 
-			president_full_name, president_education_history, president_work_experience, 
-			president_legal_record_history, president_photo_url,
-			vice_president_full_name, vice_president_education_history, vice_president_work_experience, 
-			vice_president_legal_record_history, vice_president_photo_url,
-			created_at, updated_at, is_deleted`
+	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+		president_full_name, president_education_history, president_work_experience, 
+		president_gender, president_birth_place, president_birth_date, president_last_education, 
+		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 
+		vice_president_work_experience, vice_president_gender, vice_president_birth_place, 
+		vice_president_birth_date, vice_president_last_education, vice_president_job, 
+		vice_president_photo_path, created_at, updated_at, is_deleted`
 	whereClause := ` AND election_no = $1 AND is_deleted = false`
 	joinQuery := ``
 	args = append(args, no)
 
-	electionPairModel.President = &model.CandidateInfo{}
-	electionPairModel.VicePresident = &model.CandidateInfo{}
-
 	query := fmt.Sprintf(selectElectionPair, selectQuery, joinQuery, whereClause)
 	if sqlTrx != nil {
-		err = sqlTrx.GetContext(ctx, &electionPairModel, query, args...)
+		err = sqlTrx.GetContext(ctx, &electionPairModelDTO, query, args...)
 	} else {
-		err = e.db.GetMaster().GetContext(ctx, &electionPairModel, query, args...)
+		err = e.db.GetMaster().GetContext(ctx, &electionPairModelDTO, query, args...)
 	}
 
 	if err != nil {
@@ -296,7 +342,7 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		return nil, ErrNoResult
 	}
 
-	if electionPair.ElectionNo != electionPairModel.ElectionNo {
+	if electionPair.ElectionNo != electionPairModelDTO.ElectionNo {
 		log.WithFields(log.Fields{
 			"error": err,
 			"no":    no,
@@ -304,7 +350,15 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		return nil, ErrNoResult
 	}
 
-	return &electionPairModel, nil
+	dtoToDomainElection, err := electionPairModelDTO.ToDomain()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert election pair model to domain")
+		return nil, err
+	}
+
+	return dtoToDomainElection, nil
 }
 
 func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.ElectionPair, error) {
@@ -313,8 +367,8 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 
 	sqlTrx := utils.GetSqlTx(ctx)
 	var (
-		electionPairModels []model.ElectionPair
-		err                error
+		electionPairModelsDTO []model.ElectionPairDTO
+		err                   error
 	)
 
 	electionPairs, err := e.contract.GetAllElection(nil)
@@ -325,21 +379,23 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		return nil, err
 	}
 
-	selectQuery := `id, election_no, vote_count, is_active, 
-			president_full_name, president_education_history, president_work_experience, 
-			president_legal_record_history, president_photo_url,
-			vice_president_full_name, vice_president_education_history, vice_president_work_experience, 
-			vice_president_legal_record_history, vice_president_photo_url,
-			created_at, updated_at, is_deleted`
-	whereClause := ` AND election_no = $1 AND is_deleted = false ORDER BY election_no`
+	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+		president_full_name, president_education_history, president_work_experience, 
+		president_gender, president_birth_place, president_birth_date, president_last_education, 
+		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 
+		vice_president_work_experience, vice_president_gender, vice_president_birth_place, 
+		vice_president_birth_date, vice_president_last_education, vice_president_job, 
+		vice_president_photo_path, created_at, updated_at, is_deleted`
+
+	whereClause := ` AND is_deleted = false ORDER BY election_no`
 	joinQuery := ``
 
 	query := fmt.Sprintf(selectElectionPair, selectQuery, joinQuery, whereClause)
 
 	if sqlTrx != nil {
-		err = sqlTrx.SelectContext(ctx, &electionPairModels, query)
+		err = sqlTrx.SelectContext(ctx, &electionPairModelsDTO, query)
 	} else {
-		err = e.db.GetMaster().SelectContext(ctx, &electionPairModels, query)
+		err = e.db.GetMaster().SelectContext(ctx, &electionPairModelsDTO, query)
 	}
 
 	if err != nil {
@@ -349,14 +405,21 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		return nil, err
 	}
 
-	for i := range electionPairModels {
-		electionPairModels[i].President = &model.CandidateInfo{}
-		electionPairModels[i].VicePresident = &model.CandidateInfo{}
+	pairs := make([]model.ElectionPair, len(electionPairModelsDTO))
+	for i, dto := range electionPairModelsDTO {
+		pairModel, err := dto.ToDomain()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert election pair model to domain")
+			return nil, err
+		}
+		pairs[i] = *pairModel
 	}
 
 	var matchedPairs []model.ElectionPair
 	for _, electionPair := range electionPairs {
-		for _, pairModel := range electionPairModels {
+		for _, pairModel := range pairs {
 			if electionPair.Id == pairModel.ID.String() {
 				matchedPairs = append(matchedPairs, pairModel)
 				break
@@ -371,7 +434,7 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		return nil, ErrNoResult
 	}
 
-	return matchedPairs, nil
+	return pairs, nil
 }
 
 func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) error {

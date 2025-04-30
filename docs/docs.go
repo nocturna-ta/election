@@ -196,6 +196,27 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/request.ElectionPairRegistrationRequest"
                         }
+                    },
+                    {
+                        "type": "file",
+                        "description": "Pair Photo (jpg, jpeg, png only)",
+                        "name": "pair_photo",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "President Photo (jpg, jpeg, png only)",
+                        "name": "president_photo",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Vice President Photo (jpg, jpeg, png only)",
+                        "name": "vice_president_photo",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -372,65 +393,57 @@ const docTemplate = `{
                 }
             }
         },
-        "request.CandidateInfoRequest": {
-            "type": "object",
-            "properties": {
-                "education_history": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "legal_record_history": {
-                    "type": "string"
-                },
-                "photo_path": {
-                    "type": "string"
-                },
-                "work_experience": {
-                    "type": "string"
-                }
-            }
-        },
         "request.ElectionPairRegistrationRequest": {
-            "type": "object",
-            "properties": {
-                "election_no": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "pair_photo_path": {
-                    "type": "string"
-                },
-                "president": {
-                    "$ref": "#/definitions/request.CandidateInfoRequest"
-                },
-                "signed_transaction": {
-                    "type": "string"
-                },
-                "vice_president": {
-                    "$ref": "#/definitions/request.CandidateInfoRequest"
-                }
-            }
+            "type": "object"
         },
         "response.CandidateInfoResponse": {
             "type": "object",
             "properties": {
-                "education_history": {
+                "birth_date": {
                     "type": "string"
+                },
+                "birth_place": {
+                    "type": "string"
+                },
+                "education_history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.EducationHistoryResponse"
+                    }
                 },
                 "full_name": {
                     "type": "string"
                 },
-                "legal_record_history": {
+                "gender": {
+                    "type": "string"
+                },
+                "job": {
+                    "type": "string"
+                },
+                "last_education": {
                     "type": "string"
                 },
                 "photo_path": {
                     "type": "string"
                 },
+                "religion": {
+                    "type": "string"
+                },
                 "work_experience": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.WorkHistoryResponse"
+                    }
+                }
+            }
+        },
+        "response.EducationHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "institute_name": {
+                    "type": "string"
+                },
+                "year": {
                     "type": "string"
                 }
             }
@@ -498,6 +511,20 @@ const docTemplate = `{
                 },
                 "vote_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "response.WorkHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "institute_name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "string"
                 }
             }
         }

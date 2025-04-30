@@ -15,6 +15,7 @@ type API struct {
 	writeTimeout   time.Duration
 	requestTimeout time.Duration
 	enableSwagger  bool
+	corsConfig     *router.CorsConfig
 	electionUc     usecases.ElectionUseCases
 }
 
@@ -25,6 +26,7 @@ type Options struct {
 	WriteTimeout   time.Duration
 	RequestTimeout time.Duration
 	EnableSwagger  bool
+	CorsConfig     *router.CorsConfig
 	ElectionUc     usecases.ElectionUseCases
 }
 
@@ -36,17 +38,26 @@ func New(opts *Options) *API {
 		writeTimeout:   opts.WriteTimeout,
 		requestTimeout: opts.RequestTimeout,
 		enableSwagger:  opts.EnableSwagger,
+		corsConfig:     opts.CorsConfig,
 		electionUc:     opts.ElectionUc,
 	}
 }
 
 func (api *API) RegisterRoute() *router.FastRouter {
+	corsConfig := &router.CorsConfig{
+		AllowOrigins:     "http://localhost:5173",
+		AllowMethods:     "GET, POST, PUT, PATCH, DELETE",
+		AllowHeaders:     "Content-Type, Authorization, x-user-id",
+		AllowCredentials: false,
+		MaxAge:           300,
+	}
 	myRouter := router.New(&router.Options{
 		Prefix:         api.prefix,
 		Port:           api.port,
 		ReadTimeout:    api.readTimeout,
 		WriteTimeout:   api.writeTimeout,
 		RequestTimeout: api.requestTimeout,
+		CorsConfig:     corsConfig,
 	})
 
 	if api.enableSwagger {
@@ -57,7 +68,7 @@ func (api *API) RegisterRoute() *router.FastRouter {
 
 	myRouter.Group("/v1", func(v1 *router.FastRouter) {
 		v1.Group("/election", func(election *router.FastRouter) {
-			v1.Group("/pairs", func(pairs *router.FastRouter) {
+			election.Group("/pairs", func(pairs *router.FastRouter) {
 				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
 				pairs.GET("/:id", api.GetElectionPairByID, router.MustAuthorized(false))
 				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))

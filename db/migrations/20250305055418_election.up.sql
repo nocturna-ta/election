@@ -17,16 +17,24 @@ CREATE TABLE IF NOT EXISTS "election_pairs" (
 
     -- President candidate info
     president_full_name VARCHAR(255) NOT NULL,
-    president_education_history TEXT,
-    president_work_experience TEXT,
-    president_legal_record_history TEXT,
+    president_education_history JSONB,
+    president_work_experience JSONB,
+    president_gender VARCHAR(50) NOT NULL,
+    president_birth_place VARCHAR(255) NOT NULL,
+    president_birth_date VARCHAR(20) NOT NULL,
+    president_last_education VARCHAR(100) NOT NULL,
+    president_job VARCHAR(255) NOT NULL,
     president_photo_path VARCHAR(512),
 
     -- Vice president candidate info
     vice_president_full_name VARCHAR(255) NOT NULL,
-    vice_president_education_history TEXT,
-    vice_president_work_experience TEXT,
-    vice_president_legal_record_history TEXT,
+    vice_president_education_history JSONB,
+    vice_president_work_experience JSONB,
+    vice_president_gender VARCHAR(50) NOT NULL,
+    vice_president_birth_place VARCHAR(255) NOT NULL,
+    vice_president_birth_date VARCHAR(20) NOT NULL,
+    vice_president_last_education VARCHAR(100) NOT NULL,
+    vice_president_job VARCHAR(255) NOT NULL,
     vice_president_photo_path VARCHAR(512),
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -84,3 +92,8 @@ CREATE INDEX idx_election_pairs_is_active ON election_pairs(is_active) WHERE is_
 CREATE INDEX idx_supporting_parties_election_pair_id ON supporting_parties(election_pair_id) WHERE is_deleted = FALSE;
 CREATE INDEX idx_supporting_parties_party_id ON supporting_parties(party_id) WHERE is_deleted = FALSE;
 CREATE INDEX idx_program_docs_detail_id ON program_documents(election_pair_detail_id) WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_president_education ON election_pairs USING GIN (president_education_history);
+CREATE INDEX IF NOT EXISTS idx_president_work ON election_pairs USING GIN (president_work_experience);
+CREATE INDEX IF NOT EXISTS idx_vice_president_education ON election_pairs USING GIN (vice_president_education_history);
+CREATE INDEX IF NOT EXISTS idx_vice_president_work ON election_pairs USING GIN (vice_president_work_experience);

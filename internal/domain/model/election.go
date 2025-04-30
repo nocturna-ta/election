@@ -30,11 +30,16 @@ type PairDetail struct {
 }
 
 type CandidateInfo struct {
-	FullName           string `db:"full_name"`
-	EducationHistory   string `db:"education_history"`
-	WorkExperience     string `db:"work_experience"`
-	LegalRecordHistory string `db:"legal_record_history"`
-	PhotoPath          string `db:"photo_path"`
+	FullName         string             `db:"full_name"`
+	EducationHistory []EducationHistory `db:"education_history"`
+	WorkExperience   []WorkHistory      `db:"work_experience"`
+	Gender           string             `db:"gender"`
+	BirthPlace       string             `db:"birth_place"`
+	BirthDate        string             `db:"birth_date"`
+	Religion         string             `db:"religion"`
+	LastEducation    string             `db:"last_education"`
+	Job              string             `db:"job"`
+	PhotoPath        string             `db:"photo_path"`
 }
 
 type ProgramDocument struct {
@@ -48,22 +53,65 @@ type ProgramDocument struct {
 
 func ConstructElectionPair(req *request.ElectionPairRegistrationRequest) *ElectionPair {
 	now := time.Now()
-	pairID := uuid.New()
+
+	presidentEducationHistory := make([]EducationHistory, len(req.President.EducationHistory))
+	for i, eh := range req.President.EducationHistory {
+		presidentEducationHistory[i] = EducationHistory{
+			InstituteName: eh.InstituteName,
+			Year:          eh.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]WorkHistory, len(req.President.WorkExperience))
+	for i, wh := range req.President.WorkExperience {
+		presidentWorkExperience[i] = WorkHistory{
+			InstituteName: wh.InstituteName,
+			Position:      wh.Position,
+			Year:          wh.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]EducationHistory, len(req.VicePresident.EducationHistory))
+	for i, eh := range req.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = EducationHistory{
+			InstituteName: eh.InstituteName,
+			Year:          eh.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]WorkHistory, len(req.VicePresident.WorkExperience))
+	for i, wh := range req.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = WorkHistory{
+			InstituteName: wh.InstituteName,
+			Position:      wh.Position,
+			Year:          wh.Year,
+		}
+	}
 
 	president := &CandidateInfo{
-		FullName:           req.President.FullName,
-		EducationHistory:   req.President.EducationHistory,
-		WorkExperience:     req.President.WorkExperience,
-		LegalRecordHistory: req.President.LegalRecordHistory,
-		PhotoPath:          req.President.PhotoPath,
+		FullName:         req.President.FullName,
+		EducationHistory: presidentEducationHistory,
+		WorkExperience:   presidentWorkExperience,
+		Gender:           req.President.Gender,
+		BirthPlace:       req.President.BirthPlace,
+		BirthDate:        req.President.BirthDate,
+		Religion:         req.President.Religion,
+		LastEducation:    req.President.LastEducation,
+		Job:              req.President.Job,
+		PhotoPath:        req.President.PhotoPath,
 	}
 
 	vicePresident := &CandidateInfo{
-		FullName:           req.VicePresident.FullName,
-		EducationHistory:   req.VicePresident.EducationHistory,
-		WorkExperience:     req.VicePresident.WorkExperience,
-		LegalRecordHistory: req.VicePresident.LegalRecordHistory,
-		PhotoPath:          req.VicePresident.PhotoPath,
+		FullName:         req.VicePresident.FullName,
+		EducationHistory: vicePresidentEducationHistory,
+		WorkExperience:   vicePresidentWorkExperience,
+		Gender:           req.VicePresident.Gender,
+		BirthPlace:       req.VicePresident.BirthPlace,
+		BirthDate:        req.VicePresident.BirthDate,
+		Religion:         req.VicePresident.Religion,
+		LastEducation:    req.VicePresident.LastEducation,
+		Job:              req.VicePresident.Job,
+		PhotoPath:        req.VicePresident.PhotoPath,
 	}
 
 	pair := &ElectionPair{
@@ -72,7 +120,7 @@ func ConstructElectionPair(req *request.ElectionPairRegistrationRequest) *Electi
 			UpdatedAt: now,
 			IsDeleted: false,
 		},
-		ID:            pairID,
+		ID:            uuid.MustParse(req.ID),
 		ElectionNo:    req.ElectionNo,
 		VoteCount:     0,
 		IsActive:      false,

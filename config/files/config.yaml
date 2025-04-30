@@ -16,10 +16,52 @@ Database:
   MaxConn: 10
   ConnMaxLifetime: 10s
 
+Kafka:
+  Producer:
+    Brokers:
+      - localhost:9092
+    MaxAttempt: 5
+    Idempotent: true
+  Topics:
+    MasterDataUser:
+      Value: "ums.masterdata-users"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+    MasterDataVoter:
+      Value: "ums.masterdata-voters"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+    MasterDataKpuKota:
+      Value: "ums.masterdata-kpu-kota"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+    MasterDataKpuProvinsi:
+      Value: "ums.masterdata-kpu-provinsi"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+
+JWT:
+  Secret: "^87adb2&91hnGaWd7"
+
+GrpcServer:
+  Port: 35000
 
 Encryption:
   Key : "NZkrqmVGg6Bi4QbqGXbH9wz3Q0+NCGvMKA2j8hqD5eM="
 
 BlockchainConfig:
   GanacheURL: "http://127.0.0.1:7545"
-  ContractAddress: "0xE8Bb4a8F1B7e7bE417fbf00B5d238524A482e092"
+  VotechainAddress: "0xD0a044326dcA9855042b901F5f2EF4f8D134BD25"
+  ElectionManagerAddress: "0xeEfDe01C1b43c8A00DeB24D1aEc32E69B4c78A79"
+  KPUManagerAddress: "0xc00BE030427ee6e2674BaB3f129563F28f19ddab"
+  VoterManagerAddress: "0x00287481B9eceB75ab1201C973972f9dE16671cD"
+  VotechainBaseAddress: "0x71a1C606cB303Be9399535Aabf8d135cCFa21766"
+
+
+Cors:
+  AllowOrigins: "*"
+  AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+  AllowHeaders: "Content-Type,Authorization"
+  AllowCredentials: false
+  ExposeHeaders: "X-Custom-Header"
+  MaxAge: 3600

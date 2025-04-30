@@ -11,8 +11,12 @@ type (
 		Server     ServerConfig     `yaml:"Server"`
 		API        APIConfig        `yaml:"API"`
 		Database   DBConfig         `yaml:"Database"`
+		Blockchain BlockchainConfig `yaml:"BlockchainConfig"`
+		JWT        JWTConfig        `yaml:"JWT"`
+		Kafka      KafkaConfig      `yaml:"Kafka"`
 		Encryption EncryptionConfig `yaml:"Encryption"`
-		Blockchain BlockchainConfig `yaml:"Blockchain"`
+		Cors       CorsConfig       `yaml:"Cors"`
+		GrpcServer GrpcServerConfig `yaml:"GrpcServer"`
 	}
 	ServerConfig struct {
 		Port         uint          `yaml:"Port" env:"SERVER_PORT"`
@@ -33,11 +37,15 @@ type (
 		ConnMaxLifetime string `yaml:"ConnMaxLifetime" env:"DB_CONN_MAX_LIFETIME"`
 	}
 	BlockchainConfig struct {
-		GanacheURL      string `yaml:"GanacheURL" env:"GANACHE_URL"`
-		ContractAddress string `yaml:"ContractAddress" env:"CONTRACT_ADDRESS"`
+		GanacheURL             string `yaml:"GanacheURL"`
+		VotechainAddress       string `yaml:"VotechainAddress" `
+		VotechainBaseAddress   string `yaml:"VotechainBaseAddress"`
+		KPUManagerAddress      string `yaml:"KPUManagerAddress"`
+		VoterManagerAddress    string `yaml:"VoterManagerAddress"`
+		ElectionManagerAddress string `yaml:"ElectionManagerAddress"`
 	}
-	EncryptionConfig struct {
-		Key string `yaml:"Key" env:"ENCRYPTION_KEY"`
+	JWTConfig struct {
+		Secret string `yaml:"Secret" env:"JWT_SECRET"`
 	}
 	KafkaConfig struct {
 		Producer KafkaProducerConfig `yaml:"Producer" env:"KAFKA_PRODUCER"`
@@ -50,14 +58,29 @@ type (
 	}
 
 	KafkaTopics struct {
-		MasterDataElection       KafkaTopicConfig `yaml:"MasterDataElection"`
-		MasterDataElectionDetail KafkaTopicConfig `yaml:"masterDataElectionDetail"`
+		MasterDataUser        KafkaTopicConfig `yaml:"MasterDataUser"`
+		MasterDataVoter       KafkaTopicConfig `yaml:"MasterDataVoter"`
+		MasterDataKPUProvinsi KafkaTopicConfig `yaml:"MasterDataKpuProvinsi"`
+		MasterDataKPUKota     KafkaTopicConfig `yaml:"MasterDataKpuKota"`
 	}
-
+	GrpcServerConfig struct {
+		Port uint `yaml:"Port"`
+	}
 	KafkaTopicConfig struct {
 		Value        string `yaml:"Value" env:"KAFKA_TOPIC_VALUE"`
 		ErrorHandler string `yaml:"ErrorHandler"`
 		WithBackOff  bool   `yaml:"WithBackOff"`
+	}
+	EncryptionConfig struct {
+		Key string `yaml:"Key" env:"ENCRYPTION_KEY"`
+	}
+	CorsConfig struct {
+		AllowOrigins     string `yaml:"AllowOrigins"`
+		AllowMethods     string `yaml:"AllowMethods"`
+		AllowHeaders     string `yaml:"AllowHeaders"`
+		AllowCredentials bool   `yaml:"AllowCredentials"`
+		ExposeHeaders    string `yaml:"ExposeHeaders"`
+		MaxAge           int    `yaml:"MaxAge"`
 	}
 )
 

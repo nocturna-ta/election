@@ -9,6 +9,7 @@ import (
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
 	"github.com/nocturna-ta/golib/custerr"
+	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/tracing"
@@ -31,8 +32,68 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 	transaction := func(txCtx context.Context) (any, error) {
 		electionPair = model.ConstructElectionPair(req)
 
+		if electionPair.PairPhotoPath != "" {
+			_ = fileutils.DeleteFile(txCtx, electionPair.PairPhotoPath)
+		}
+		if req.President.PhotoPath != "" {
+			_ = fileutils.DeleteFile(txCtx, req.President.PhotoPath)
+		}
+		if req.VicePresident.PhotoPath != "" {
+			_ = fileutils.DeleteFile(txCtx, req.VicePresident.PhotoPath)
+		}
+
+		fileConfig := fileutils.DefaultConfig()
+		fileConfig.SetAllowedImageExtension()
+		fileConfig.EntityType = "election_pair"
+
+		photoPathPair, err := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfig)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store pair photo")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to store pair photo",
+				Cause:   err,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
+		}
+
+		presidentPhoto, err := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfig)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store president photo")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to store president photo",
+				Cause:   err,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
+		}
+
+		vicePresidentPhoto, err := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfig)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store vice president photo")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to store vice president photo",
+				Cause:   err,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
+		}
+
+		electionPair.PairPhotoPath = photoPathPair
+		electionPair.President.PhotoPath = presidentPhoto
+		electionPair.VicePresident.PhotoPath = vicePresidentPhoto
+
 		if errTx := m.electionRepo.InsertElectionPair(txCtx, electionPair, req.SignedTransaction); err != nil {
 			if errors.Is(errTx, dao.ErrDuplicate) {
+				_ = fileutils.DeleteFile(txCtx, photoPathPair)
+				_ = fileutils.DeleteFile(txCtx, presidentPhoto)
+				_ = fileutils.DeleteFile(txCtx, vicePresidentPhoto)
 				return nil, &custerr.ErrChain{
 					Message: "Election Pair already exists",
 					Cause:   errTx,
@@ -53,6 +114,40 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		return nil, err
 	}
 
+	presidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.President.EducationHistory))
+	for i, history := range electionPair.President.EducationHistory {
+		presidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.President.WorkExperience))
+	for i, history := range electionPair.President.WorkExperience {
+		presidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.VicePresident.EducationHistory))
+	for i, history := range electionPair.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.VicePresident.WorkExperience))
+	for i, history := range electionPair.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
 	return &response.ElectionPairResponse{
 		ID:            electionPair.ID.String(),
 		ElectionNo:    electionPair.ElectionNo,
@@ -60,18 +155,28 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		IsActive:      electionPair.IsActive,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
-			FullName:           electionPair.President.FullName,
-			EducationHistory:   electionPair.President.EducationHistory,
-			WorkExperience:     electionPair.President.WorkExperience,
-			LegalRecordHistory: electionPair.President.LegalRecordHistory,
-			PhotoPath:          electionPair.President.PhotoPath,
+			FullName:         electionPair.President.FullName,
+			EducationHistory: presidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.President.Gender,
+			BirthPlace:       electionPair.President.BirthPlace,
+			BirthDate:        electionPair.President.BirthDate,
+			Religion:         electionPair.President.Religion,
+			LastEducation:    electionPair.President.LastEducation,
+			Job:              electionPair.President.Job,
+			PhotoPath:        electionPair.President.PhotoPath,
 		},
 		VicePresident: response.CandidateInfoResponse{
-			FullName:           electionPair.VicePresident.FullName,
-			EducationHistory:   electionPair.VicePresident.EducationHistory,
-			WorkExperience:     electionPair.VicePresident.WorkExperience,
-			LegalRecordHistory: electionPair.VicePresident.LegalRecordHistory,
-			PhotoPath:          electionPair.VicePresident.PhotoPath,
+			FullName:         electionPair.VicePresident.FullName,
+			EducationHistory: vicePresidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.VicePresident.Gender,
+			BirthPlace:       electionPair.VicePresident.BirthPlace,
+			BirthDate:        electionPair.VicePresident.BirthDate,
+			Religion:         electionPair.VicePresident.Religion,
+			LastEducation:    electionPair.VicePresident.LastEducation,
+			Job:              electionPair.VicePresident.Job,
+			PhotoPath:        electionPair.VicePresident.PhotoPath,
 		},
 	}, err
 }
@@ -107,6 +212,40 @@ func (m *Module) GetElectionPairByID(ctx context.Context, id string) (*response.
 		return nil, err
 	}
 
+	presidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.President.EducationHistory))
+	for i, history := range electionPair.President.EducationHistory {
+		presidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.President.WorkExperience))
+	for i, history := range electionPair.President.WorkExperience {
+		presidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.VicePresident.EducationHistory))
+	for i, history := range electionPair.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.VicePresident.WorkExperience))
+	for i, history := range electionPair.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
 	return &response.ElectionPairResponse{
 		ID:            electionPair.ID.String(),
 		ElectionNo:    electionPair.ElectionNo,
@@ -114,18 +253,28 @@ func (m *Module) GetElectionPairByID(ctx context.Context, id string) (*response.
 		IsActive:      electionPair.IsActive,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
-			FullName:           electionPair.President.FullName,
-			EducationHistory:   electionPair.President.EducationHistory,
-			WorkExperience:     electionPair.President.WorkExperience,
-			LegalRecordHistory: electionPair.President.LegalRecordHistory,
-			PhotoPath:          electionPair.President.PhotoPath,
+			FullName:         electionPair.President.FullName,
+			EducationHistory: presidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.President.Gender,
+			BirthPlace:       electionPair.President.BirthPlace,
+			BirthDate:        electionPair.President.BirthDate,
+			Religion:         electionPair.President.Religion,
+			LastEducation:    electionPair.President.LastEducation,
+			Job:              electionPair.President.Job,
+			PhotoPath:        electionPair.President.PhotoPath,
 		},
 		VicePresident: response.CandidateInfoResponse{
-			FullName:           electionPair.VicePresident.FullName,
-			EducationHistory:   electionPair.VicePresident.EducationHistory,
-			WorkExperience:     electionPair.VicePresident.WorkExperience,
-			LegalRecordHistory: electionPair.VicePresident.LegalRecordHistory,
-			PhotoPath:          electionPair.VicePresident.PhotoPath,
+			FullName:         electionPair.VicePresident.FullName,
+			EducationHistory: vicePresidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.VicePresident.Gender,
+			BirthPlace:       electionPair.VicePresident.BirthPlace,
+			BirthDate:        electionPair.VicePresident.BirthDate,
+			Religion:         electionPair.VicePresident.Religion,
+			LastEducation:    electionPair.VicePresident.LastEducation,
+			Job:              electionPair.VicePresident.Job,
+			PhotoPath:        electionPair.VicePresident.PhotoPath,
 		},
 	}, nil
 
@@ -152,6 +301,40 @@ func (m *Module) GetElectionPairByNo(ctx context.Context, no string) (*response.
 		return nil, err
 	}
 
+	presidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.President.EducationHistory))
+	for i, history := range electionPair.President.EducationHistory {
+		presidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.President.WorkExperience))
+	for i, history := range electionPair.President.WorkExperience {
+		presidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.VicePresident.EducationHistory))
+	for i, history := range electionPair.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(electionPair.VicePresident.WorkExperience))
+	for i, history := range electionPair.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
 	return &response.ElectionPairResponse{
 		ID:            electionPair.ID.String(),
 		ElectionNo:    electionPair.ElectionNo,
@@ -159,18 +342,28 @@ func (m *Module) GetElectionPairByNo(ctx context.Context, no string) (*response.
 		IsActive:      electionPair.IsActive,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
-			FullName:           electionPair.President.FullName,
-			EducationHistory:   electionPair.President.EducationHistory,
-			WorkExperience:     electionPair.President.WorkExperience,
-			LegalRecordHistory: electionPair.President.LegalRecordHistory,
-			PhotoPath:          electionPair.President.PhotoPath,
+			FullName:         electionPair.President.FullName,
+			EducationHistory: presidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.President.Gender,
+			BirthPlace:       electionPair.President.BirthPlace,
+			BirthDate:        electionPair.President.BirthDate,
+			Religion:         electionPair.President.Religion,
+			LastEducation:    electionPair.President.LastEducation,
+			Job:              electionPair.President.Job,
+			PhotoPath:        electionPair.President.PhotoPath,
 		},
 		VicePresident: response.CandidateInfoResponse{
-			FullName:           electionPair.VicePresident.FullName,
-			EducationHistory:   electionPair.VicePresident.EducationHistory,
-			WorkExperience:     electionPair.VicePresident.WorkExperience,
-			LegalRecordHistory: electionPair.VicePresident.LegalRecordHistory,
-			PhotoPath:          electionPair.VicePresident.PhotoPath,
+			FullName:         electionPair.VicePresident.FullName,
+			EducationHistory: vicePresidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           electionPair.VicePresident.Gender,
+			BirthPlace:       electionPair.VicePresident.BirthPlace,
+			BirthDate:        electionPair.VicePresident.BirthDate,
+			Religion:         electionPair.VicePresident.Religion,
+			LastEducation:    electionPair.VicePresident.LastEducation,
+			Job:              electionPair.VicePresident.Job,
+			PhotoPath:        electionPair.VicePresident.PhotoPath,
 		},
 	}, nil
 }
@@ -189,6 +382,39 @@ func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPai
 
 	pairResponse := make([]response.ElectionPairResponse, len(electionPairs))
 	for i, pair := range electionPairs {
+		presidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.President.EducationHistory))
+		for j, history := range pair.President.EducationHistory {
+			presidentEducationHistory[j] = response.EducationHistoryResponse{
+				InstituteName: history.InstituteName,
+				Year:          history.Year,
+			}
+		}
+
+		presidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.President.WorkExperience))
+		for j, history := range pair.President.WorkExperience {
+			presidentWorkExperience[j] = response.WorkHistoryResponse{
+				InstituteName: history.InstituteName,
+				Position:      history.Position,
+				Year:          history.Year,
+			}
+		}
+
+		vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.VicePresident.EducationHistory))
+		for j, history := range pair.VicePresident.EducationHistory {
+			vicePresidentEducationHistory[j] = response.EducationHistoryResponse{
+				InstituteName: history.InstituteName,
+				Year:          history.Year,
+			}
+		}
+
+		vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.VicePresident.WorkExperience))
+		for j, history := range pair.VicePresident.WorkExperience {
+			vicePresidentWorkExperience[j] = response.WorkHistoryResponse{
+				InstituteName: history.InstituteName,
+				Position:      history.Position,
+				Year:          history.Year,
+			}
+		}
 		pairResponse[i] = response.ElectionPairResponse{
 			ID:            pair.ID.String(),
 			ElectionNo:    pair.ElectionNo,
@@ -196,18 +422,28 @@ func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPai
 			IsActive:      pair.IsActive,
 			PairPhotoPath: pair.PairPhotoPath,
 			President: response.CandidateInfoResponse{
-				FullName:           pair.President.FullName,
-				EducationHistory:   pair.President.EducationHistory,
-				WorkExperience:     pair.President.WorkExperience,
-				LegalRecordHistory: pair.President.LegalRecordHistory,
-				PhotoPath:          pair.President.PhotoPath,
+				FullName:         pair.President.FullName,
+				EducationHistory: presidentEducationHistory,
+				WorkExperience:   presidentWorkExperience,
+				Gender:           pair.President.Gender,
+				BirthPlace:       pair.President.BirthPlace,
+				BirthDate:        pair.President.BirthDate,
+				Religion:         pair.President.Religion,
+				LastEducation:    pair.President.LastEducation,
+				Job:              pair.President.Job,
+				PhotoPath:        pair.President.PhotoPath,
 			},
 			VicePresident: response.CandidateInfoResponse{
-				FullName:           pair.VicePresident.FullName,
-				EducationHistory:   pair.VicePresident.EducationHistory,
-				WorkExperience:     pair.VicePresident.WorkExperience,
-				LegalRecordHistory: pair.VicePresident.LegalRecordHistory,
-				PhotoPath:          pair.VicePresident.PhotoPath,
+				FullName:         pair.VicePresident.FullName,
+				EducationHistory: vicePresidentEducationHistory,
+				WorkExperience:   vicePresidentWorkExperience,
+				Gender:           pair.VicePresident.Gender,
+				BirthPlace:       pair.VicePresident.BirthPlace,
+				BirthDate:        pair.VicePresident.BirthDate,
+				Religion:         pair.VicePresident.Religion,
+				LastEducation:    pair.VicePresident.LastEducation,
+				Job:              pair.VicePresident.Job,
+				PhotoPath:        pair.VicePresident.PhotoPath,
 			},
 		}
 	}

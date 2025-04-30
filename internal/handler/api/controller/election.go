@@ -2,9 +2,11 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/nocturna-ta/election/internal/infrastructures/cutresp"
-	"github.com/nocturna-ta/election/internal/usecases/request"
+	"github.com/nocturna-ta/election/pkg/utils"
+	"github.com/nocturna-ta/golib/custerr"
+	"github.com/nocturna-ta/golib/http/filehandler"
+	"github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/response/rest"
 	"github.com/nocturna-ta/golib/router"
 	"github.com/nocturna-ta/golib/tracing"
@@ -19,6 +21,9 @@ import (
 // @Param X-Address-Id header string false "Authorized Address"
 // @Param X-Role header string false "Authorized Role"
 // @Param 		pair body request.ElectionPairRegistrationRequest true "Registration Request"
+// @Param 		pair_photo formData file true "Pair Photo (jpg, jpeg, png only)"
+// @Param 		president_photo formData file true "President Photo (jpg, jpeg, png only)"
+// @Param 		vice_president_photo formData file true "Vice President Photo (jpg, jpeg, png only)"
 // @Produce		json
 // @Success		200	{object}	jsonResponse{data=response.ElectionPairResponse}
 // @Router		/v1/election/pairs/register	[post]
@@ -26,15 +31,50 @@ func (api *API) RegisterElectionPair(ctx context.Context, req *router.Request) (
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.RegisterElectionPair")
 	defer span.End()
 
-	var regReq request.ElectionPairRegistrationRequest
-	err := json.Unmarshal(req.RawBody(), &regReq)
+	form, err := req.RawRequest().MultipartForm()
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Failed to parse multipart form",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		})
+	}
+
+	fileConfigs := []utils.FileUploadConfig{
+		{
+			FieldName:  "pair_photo",
+			Required:   true,
+			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for pair photo. Only JPG, JPEG, and PNG files are allowed",
+			},
+		},
+		{
+			FieldName:  "president_photo",
+			Required:   true,
+			UploadFunc: filehandler.ImageUploadOptions,
+		},
+		{
+			FieldName:  "vice_president_photo",
+			Required:   true,
+			UploadFunc: filehandler.ImageUploadOptions,
+		},
+	}
+
+	uploadedFiles, err := utils.ProcessFileUploads(ctx, form, fileConfigs)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	err = regReq.ValidateRegistrationRequest()
+	defer utils.CloseFiles(uploadedFiles)
 
-	res, err := api.electionUc.RegisterElectionPair(ctx, &regReq)
+	registraionRequest, err := utils.ParseRegistrationRequest(req.RawBody(), uploadedFiles)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	res, err := api.electionUc.RegisterElectionPair(ctx, registraionRequest)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
