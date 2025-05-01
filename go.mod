@@ -7,7 +7,7 @@ require (
 	github.com/gofiber/swagger v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
-	github.com/nocturna-ta/golib v1.1.5
+	github.com/nocturna-ta/golib v1.1.6
 	github.com/nocturna-ta/votechain-contract v1.2.6
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0

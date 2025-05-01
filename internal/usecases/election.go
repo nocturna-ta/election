@@ -17,4 +17,6 @@ type ElectionUseCases interface {
 	UpsertElectionPairDetail(ctx context.Context, req *request.ElectionPairDetailRequest) (*response.ElectionPairDetailResponse, error)
 	GetElectionPairDetail(ctx context.Context, pairID string) (*response.ElectionPairDetailResponse, error)
 	GetElectionPairPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error)
+	GetPresidentPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error)
+	GetVicePresidentPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error)
 }

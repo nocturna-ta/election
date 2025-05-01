@@ -56,11 +56,17 @@ func (api *API) RegisterElectionPair(ctx context.Context, req *router.Request) (
 			FieldName:  "president_photo",
 			Required:   true,
 			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for president photo. Only JPG, JPEG, and PNG files are allowed",
+			},
 		},
 		{
 			FieldName:  "vice_president_photo",
 			Required:   true,
 			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for vice president photo. Only JPG, JPEG, and PNG files are allowed",
+			},
 		},
 	}
 
@@ -217,16 +223,17 @@ func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Reques
 }
 
 // GetElectionPairPhoto godoc
-// @Summary 	Election Pair Photo
-// @Description	Get Election Pair Photo
-// @Tags		Election
+// @Summary     Election Pair Photo
+// @Description Get Election Pair Photo
+// @Tags        Election
 // @Param X-User-Id header string false "User"
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
-// @Param 		id path string true "Election Pair ID"
-// @Produce octet-stream
-// @Success		200
-// @Router		/v1/election/pairs/{id}/photo	[get]
+// @Param       id path string true "Election Pair ID"
+// @Produce     image/jpeg
+// @Produce     image/png
+// @Success     200
+// @Router      /v1/election/pairs/{id}/photo [get]
 func (api *API) GetElectionPairPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairPhoto")
 	defer span.End()
@@ -241,6 +248,72 @@ func (api *API) GetElectionPairPhoto(ctx context.Context, req *router.Request) (
 	}
 
 	file, contentType, err := api.electionUc.GetElectionPairPhoto(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
+}
+
+// GetPresidentPhoto godoc
+// @Summary    President Photo
+// @Description Get President Photo
+// @Tags        Election
+// @Param X-User-Id header string false "User"
+// @Param X-Address-Id header string false "Address"
+// @Param X-Role header string false "Role"
+// @Param       id path string true "Election Pair ID"
+// @Produce     image/jpeg
+// @Produce     image/png
+// @Success     200
+// @Router      /v1/election/pairs/{id}/photo/president [get]
+func (api *API) GetPresidentPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetPresidentPhoto")
+	defer span.End()
+
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	file, contentType, err := api.electionUc.GetPresidentPhoto(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
+}
+
+// GetVicePresidentPhoto godoc
+// @Summary    Vice President Photo
+// @Description Get Vice President Photo
+// @Tags        Election
+// @Param X-User-Id header string false "User"
+// @Param X-Address-Id header string false "Address"
+// @Param X-Role header string false "Role"
+// @Param       id path string true "Election Pair ID"
+// @Produce     image/jpeg
+// @Produce     image/png
+// @Success     200
+// @Router      /v1/election/pairs/{id}/photo/vice-president [get]
+func (api *API) GetVicePresidentPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetVicePresidentPhoto")
+	defer span.End()
+
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	file, contentType, err := api.electionUc.GetVicePresidentPhoto(ctx, id)
 	if err != nil {
 		return nil, err
 	}

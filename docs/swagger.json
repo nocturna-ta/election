@@ -343,12 +343,103 @@
             "get": {
                 "description": "Get Election Pair Photo",
                 "produces": [
-                    "application/octet-stream"
+                    "image/jpeg",
+                    "image/png"
                 ],
                 "tags": [
                     "Election"
                 ],
                 "summary": "Election Pair Photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/v1/election/pairs/{id}/photo/president": {
+            "get": {
+                "description": "Get President Photo",
+                "produces": [
+                    "image/jpeg",
+                    "image/png"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "President Photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/v1/election/pairs/{id}/photo/vice-president": {
+            "get": {
+                "description": "Get Vice President Photo",
+                "produces": [
+                    "image/jpeg",
+                    "image/png"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Vice President Photo",
                 "parameters": [
                     {
                         "type": "string",

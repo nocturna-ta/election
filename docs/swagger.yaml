@@ -232,11 +232,72 @@ paths:
         required: true
         type: string
       produces:
-      - application/octet-stream
+      - image/jpeg
+      - image/png
       responses:
         "200":
           description: OK
       summary: Election Pair Photo
+      tags:
+      - Election
+  /v1/election/pairs/{id}/photo/president:
+    get:
+      description: Get President Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: President Photo
+      tags:
+      - Election
+  /v1/election/pairs/{id}/photo/vice-president:
+    get:
+      description: Get Vice President Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: Vice President Photo
       tags:
       - Election
   /v1/election/pairs/{pairID}/detail:

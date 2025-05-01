@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -45,7 +46,7 @@ func ProcessFileUploads(ctx context.Context, form *multipart.Form, configs []Fil
 
 		uploadResult, err := filehandler.UploadFile(ctx, form, uploadOptions)
 		if err != nil {
-			if err == filehandler.ErrNoFile && !config.Required {
+			if errors.Is(err, filehandler.ErrNoFile) && !config.Required {
 				continue
 			}
 			return nil, MapFileUploadError(err, config)

@@ -44,11 +44,11 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 			_ = fileutils.DeleteFile(txCtx, req.VicePresident.PhotoPath)
 		}
 
-		fileConfig := fileutils.DefaultConfig()
-		fileConfig.SetAllowedImageExtension()
-		fileConfig.EntityType = "election_pair"
+		fileConfigPairPhoto := fileutils.DefaultConfig()
+		fileConfigPairPhoto.SetAllowedImageExtension()
+		fileConfigPairPhoto.EntityType = "election_pair"
 
-		photoPathPair, err := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfig)
+		photoPathPair, err := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfigPairPhoto)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -61,7 +61,11 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 			}
 		}
 
-		presidentPhoto, err := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfig)
+		fileConfigPresident := fileutils.DefaultConfig()
+		fileConfigPresident.SetAllowedImageExtension()
+		fileConfigPresident.EntityType = "election_pair"
+
+		presidentPhoto, err := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfigPresident)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -74,7 +78,11 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 			}
 		}
 
-		vicePresidentPhoto, err := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfig)
+		fileConfigVicePresident := fileutils.DefaultConfig()
+		fileConfigVicePresident.SetAllowedImageExtension()
+		fileConfigVicePresident.EntityType = "election_pair"
+
+		vicePresidentPhoto, err := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfigVicePresident)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -600,7 +608,77 @@ func (m *Module) GetElectionPairPhoto(ctx context.Context, id uuid.UUID) (*http.
 		}
 	}
 
-	file, contentType, err := filehandler.GetFileFromPath(ctx, election.PairPhotoPath)
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.PairPhotoPath, filehandler.DisplayModeAttachment)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "Failed to get file",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	return file, contentType, nil
+}
+
+func (m *Module) GetPresidentPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetPresidentPhoto")
+	defer span.End()
+	election, err := m.electionRepo.GetElectionPairByID(ctx, id)
+	if err != nil {
+		return nil, "", custerr.ErrChain{
+			Message: "Election not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	if election.President.PhotoPath == "" {
+		return nil, "", &custerr.ErrChain{
+			Message: "President photo not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.President.PhotoPath, filehandler.DisplayModeInline)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "Failed to get file",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	return file, contentType, nil
+}
+
+func (m *Module) GetVicePresidentPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetVicePresidentPhoto")
+	defer span.End()
+	election, err := m.electionRepo.GetElectionPairByID(ctx, id)
+	if err != nil {
+		return nil, "", custerr.ErrChain{
+			Message: "Election not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	if election.President.PhotoPath == "" {
+		return nil, "", &custerr.ErrChain{
+			Message: "President photo not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.President.PhotoPath, filehandler.DisplayModeAttachment)
 	if err != nil {
 		return nil, "", &custerr.ErrChain{
 			Message: "Failed to get file",
