@@ -342,20 +342,20 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		return nil, ErrNoResult
 	}
 
-	if electionPair.ElectionNo != electionPairModelDTO.ElectionNo {
-		log.WithFields(log.Fields{
-			"error": err,
-			"no":    no,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Election pair no not match")
-		return nil, ErrNoResult
-	}
-
 	dtoToDomainElection, err := electionPairModelDTO.ToDomain()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert election pair model to domain")
 		return nil, err
+	}
+
+	if electionPair.ElectionNo != dtoToDomainElection.ElectionNo {
+		log.WithFields(log.Fields{
+			"error": err,
+			"no":    no,
+		}).ErrorWithCtx(ctx, "[ElectionRepository] Election pair no not match")
+		return nil, ErrNoResult
 	}
 
 	return dtoToDomainElection, nil
@@ -683,7 +683,9 @@ func (e *ElectionRepository) GetPairDetailByPairID(ctx context.Context, pairID u
 }
 
 func (e *ElectionRepository) UpdateElectionPairPhoto(ctx context.Context, id uuid.UUID, photoPath string) error {
-	//TODO implement me
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateElectionPairPhoto")
+	defer span.End()
+
 	panic("implement me")
 }
 

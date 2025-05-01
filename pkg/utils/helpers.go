@@ -2,18 +2,17 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/nocturna-ta/election/internal/usecases/request"
+	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/http/filehandler"
 	"github.com/nocturna-ta/golib/response"
+	"github.com/nocturna-ta/golib/router"
 	"io"
 	"mime/multipart"
-	"regexp"
 )
 
 type FileUploadConfig struct {
@@ -23,12 +22,18 @@ type FileUploadConfig struct {
 	ErrorMsgs   map[error]string
 	DefaultCode int
 }
+
 type UploadedFile struct {
 	File             io.ReadCloser
 	OriginalFilename string
 	FilePath         string
 	ContentType      string
 	Size             int64
+}
+
+// Generic registration request interface to avoid direct import of request package
+type RegistrationRequest interface {
+	Validate() error
 }
 
 func ProcessFileUploads(ctx context.Context, form *multipart.Form, configs []FileUploadConfig) (map[string]UploadedFile, error) {
@@ -103,34 +108,8 @@ func MapFileUploadError(err error, config FileUploadConfig) *custerr.ErrChain {
 	}
 }
 
-func ParseRegistrationRequest(rawBody []byte, files map[string]UploadedFile) (*request.ElectionPairRegistrationRequest, error) {
-	var regReq request.ElectionPairRegistrationRequest
-
-	if err := json.Unmarshal(rawBody, &regReq); err != nil {
-		return nil, err
-	}
-
-	if err := regReq.ValidateRegistrationRequest(); err != nil {
-		return nil, err
-	}
-
-	if pairPhoto, exists := files["pair_photo"]; exists {
-		regReq.PairPhotoName = pairPhoto.OriginalFilename
-		regReq.PairPhotoFile = pairPhoto.File
-	}
-
-	if presidentPhoto, exists := files["president_photo"]; exists {
-		regReq.President.PhotoPath = presidentPhoto.OriginalFilename
-		regReq.President.PhotoFile = presidentPhoto.File
-	}
-
-	if vicePresidentPhoto, exists := files["vice_president_photo"]; exists {
-		regReq.VicePresident.PhotoPath = vicePresidentPhoto.OriginalFilename
-		regReq.VicePresident.PhotoFile = vicePresidentPhoto.File
-	}
-
-	return &regReq, nil
-}
+// This function is now moved to pkg/utils/request_helper.go to break the dependency cycle
+// Moving it to a separate file that will depend on request, but not be imported by request
 
 func CloseFiles(files map[string]UploadedFile) {
 	for _, fileInfo := range files {
@@ -155,11 +134,15 @@ func StringToTx(signedTx string) (*types.Transaction, error) {
 	}
 
 	return tx, nil
-
 }
 
-func IsNotUUID(s string) bool {
-	uuidRegex := `^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`
-	re := regexp.MustCompile(uuidRegex)
-	return !re.MatchString(s)
+func ConvertToRouterCorsConfig(configCors *config.CorsConfig) *router.CorsConfig {
+	return &router.CorsConfig{
+		AllowOrigins:     configCors.AllowOrigins,
+		AllowMethods:     configCors.AllowMethods,
+		AllowHeaders:     configCors.AllowHeaders,
+		AllowCredentials: configCors.AllowCredentials,
+		ExposeHeaders:    configCors.ExposeHeaders,
+		MaxAge:           configCors.MaxAge,
+	}
 }

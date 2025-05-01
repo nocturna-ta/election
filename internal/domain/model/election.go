@@ -42,15 +42,6 @@ type CandidateInfo struct {
 	PhotoPath        string             `db:"photo_path"`
 }
 
-type ProgramDocument struct {
-	BaseModel
-	ID                   uuid.UUID `db:"id"`
-	ElectionPairDetailID uuid.UUID `db:"election_pair_detail_id"`
-	DocumentPath         string    `db:"document_path"`
-	DocumentType         string    `db:"document_type"`
-	OriginalFilename     string    `db:"original_filename"`
-}
-
 func ConstructElectionPair(req *request.ElectionPairRegistrationRequest) *ElectionPair {
 	now := time.Now()
 

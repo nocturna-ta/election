@@ -10,6 +10,8 @@ import (
 	"github.com/nocturna-ta/election/internal/usecases/response"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
+	"github.com/nocturna-ta/golib/http"
+	"github.com/nocturna-ta/golib/http/filehandler"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/tracing"
@@ -573,4 +575,40 @@ func (m *Module) GetElectionPairDetail(ctx context.Context, pairID string) (*res
 		WorkProgram:    detail.WorkProgram,
 		ProgramDocs:    detail.ProgramDocs,
 	}, nil
+}
+
+func (m *Module) GetElectionPairPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetElectionPairPhotoPath")
+	defer span.End()
+
+	election, err := m.electionRepo.GetElectionPairByID(ctx, id)
+	if err != nil {
+		return nil, "", custerr.ErrChain{
+			Message: "Election not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	if election.PairPhotoPath == "" {
+		return nil, "", &custerr.ErrChain{
+			Message: "Election Pair photo not found",
+			Cause:   err,
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.PairPhotoPath)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "Failed to get file",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	return file, contentType, nil
 }

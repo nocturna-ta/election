@@ -94,6 +94,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/detail": {
+            "post": {
+                "description": "Create or Update Election Pair Detail",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election Detail",
+                "parameters": [
+                    {
+                        "description": "Detail Request",
+                        "name": "detail",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.ElectionPairDetailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/number/{no}": {
             "get": {
                 "description": "Get Election Pair By Number",
@@ -160,7 +206,7 @@ const docTemplate = `{
             "post": {
                 "description": "Register Election Pair (President and Vice President)",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -189,13 +235,11 @@ const docTemplate = `{
                         "in": "header"
                     },
                     {
-                        "description": "Registration Request",
+                        "type": "string",
+                        "description": "Registration Request (JSON String)",
                         "name": "pair",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.ElectionPairRegistrationRequest"
-                        }
+                        "in": "formData",
+                        "required": true
                     },
                     {
                         "type": "file",
@@ -303,6 +347,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/{id}/photo": {
+            "get": {
+                "description": "Get Election Pair Photo",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election Pair Photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{pairID}/detail": {
             "get": {
                 "description": "Get Election Pair Detail",
@@ -393,8 +481,28 @@ const docTemplate = `{
                 }
             }
         },
-        "request.ElectionPairRegistrationRequest": {
-            "type": "object"
+        "request.ElectionPairDetailRequest": {
+            "type": "object",
+            "properties": {
+                "election_pair_id": {
+                    "type": "string"
+                },
+                "mission": {
+                    "type": "string"
+                },
+                "program_docs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "vision": {
+                    "type": "string"
+                },
+                "work_program": {
+                    "type": "string"
+                }
+            }
         },
         "response.CandidateInfoResponse": {
             "type": "object",

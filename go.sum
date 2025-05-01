@@ -185,6 +185,8 @@ github.com/nocturna-ta/golib v1.1.5 h1:3cLFU2A3OYKDM64A83SL4zHwnogMAFcmJhWZK2xzn
 github.com/nocturna-ta/golib v1.1.5/go.mod h1:TKfb0VniLlMyXcxzzL1D36TwJteW/vREl4RBi5R9wpw=
 github.com/nocturna-ta/votechain-contract v1.2.5 h1:6WsGuPhbLBdKnJSZgLMiuFsYt/K5C+dcmOl0HRZE8Ho=
 github.com/nocturna-ta/votechain-contract v1.2.5/go.mod h1:z0ZULdWNTUM5T+75y4mp4ezVuj1jHkzefElnbBbJ7dc=
+github.com/nocturna-ta/votechain-contract v1.2.6 h1:WN9rKGP1Otu3DepRrDuNnrUCrKP9VjveIg6YO23FIMk=
+github.com/nocturna-ta/votechain-contract v1.2.6/go.mod h1:z0ZULdWNTUM5T+75y4mp4ezVuj1jHkzefElnbBbJ7dc=
 github.com/olekukonko/tablewriter v0.0.5 h1:P2Ga83D34wi1o9J6Wh1mRuqd4mF/x/lgBS7N7AbDhec=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
 github.com/opentracing/opentracing-go v1.1.0 h1:pWlfV3Bxv7k65HYwkikxat0+s3pV4bsqf19k25Ur8rU=

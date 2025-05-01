@@ -71,8 +71,11 @@ func (api *API) RegisterRoute() *router.FastRouter {
 			election.Group("/pairs", func(pairs *router.FastRouter) {
 				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
 				pairs.GET("/:id", api.GetElectionPairByID, router.MustAuthorized(false))
+				pairs.ATTACHMENT("/:id/photo", api.GetElectionPairPhoto, router.MustAuthorized(false))
 				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))
 				pairs.POST("/register", api.RegisterElectionPair, router.MustAuthorized(false))
+				pairs.POST("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
+				pairs.GET("/:pairID/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
 				//pairs.POST("/activate", api.ActivateElectionPair, router.MustAuthorized(false))
 				//pairs.GET("/:id/full", api.GetElectionPairFull, router.MustAuthorized(false))
 			})

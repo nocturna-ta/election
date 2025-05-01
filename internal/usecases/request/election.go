@@ -1,7 +1,7 @@
 package request
 
 import (
-	"github.com/nocturna-ta/election/pkg/utils"
+	"github.com/nocturna-ta/election/pkg/common"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/response"
 	"io"
@@ -18,8 +18,8 @@ type CandidateInfoRequest struct {
 	LastEducation    string                    `json:"last_education"`
 	Job              string                    `json:"job"`
 	PhotoPath        string                    `json:"photo_path"`
-	PhotoFile        io.Reader                 `json:"photo_file"`
-	PhotoName        string                    `json:"photo_name"`
+	PhotoFile        io.Reader                 `json:"-" swaggerignore:"true"`
+	PhotoName        string                    `json:"-" swaggerignore:"true"`
 }
 
 type EducationHistoryRequest struct {
@@ -37,8 +37,8 @@ type ElectionPairRegistrationRequest struct {
 	ID                string               `json:"id"`
 	ElectionNo        string               `json:"election_no"`
 	PairPhotoPath     string               `json:"pair_photo_path"`
-	PairPhotoFile     io.Reader            `json:"pair_photo_file"`
-	PairPhotoName     string               `json:"pair_photo_name"`
+	PairPhotoFile     io.Reader            `json:"-" swaggerignore:"true"`
+	PairPhotoName     string               `json:"-" swaggerignore:"true"`
 	President         CandidateInfoRequest `json:"president"`
 	VicePresident     CandidateInfoRequest `json:"vice_president"`
 	SignedTransaction string               `json:"signed_transaction"`
@@ -50,7 +50,6 @@ type ElectionPairActivationRequest struct {
 }
 
 type ElectionPairDetailRequest struct {
-	ID             string   `json:"id"`
 	ElectionPairID string   `json:"election_pair_id"`
 	Vision         string   `json:"vision"`
 	Mission        string   `json:"mission"`
@@ -67,7 +66,7 @@ func (req *ElectionPairRegistrationRequest) ValidateRegistrationRequest() error 
 		}
 	}
 
-	if utils.IsNotUUID(req.ID) {
+	if common.IsNotUUID(req.ID) {
 		return &custerr.ErrChain{
 			Message: "ID is not a valid UUID",
 			Code:    400,
@@ -102,6 +101,18 @@ func (req *ElectionPairRegistrationRequest) ValidateRegistrationRequest() error 
 	if req.SignedTransaction == "" {
 		return &custerr.ErrChain{
 			Message: "Signed transaction cannot be empty",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	return nil
+}
+
+func (req *ElectionPairDetailRequest) ValidateDetailRequest() error {
+	if req == nil {
+		return &custerr.ErrChain{
+			Message: "Request cannot be nil",
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		}

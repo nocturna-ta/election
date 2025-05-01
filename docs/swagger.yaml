@@ -17,7 +17,20 @@ definitions:
       message:
         type: string
     type: object
-  request.ElectionPairRegistrationRequest:
+  request.ElectionPairDetailRequest:
+    properties:
+      election_pair_id:
+        type: string
+      mission:
+        type: string
+      program_docs:
+        items:
+          type: string
+        type: array
+      vision:
+        type: string
+      work_program:
+        type: string
     type: object
   response.CandidateInfoResponse:
     properties:
@@ -197,6 +210,35 @@ paths:
       summary: Election
       tags:
       - Election
+  /v1/election/pairs/{id}/photo:
+    get:
+      description: Get Election Pair Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+      summary: Election Pair Photo
+      tags:
+      - Election
   /v1/election/pairs/{pairID}/detail:
     get:
       consumes:
@@ -220,6 +262,33 @@ paths:
         name: pairID
         required: true
         type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairDetailResponse'
+              type: object
+      summary: Election Detail
+      tags:
+      - Election
+  /v1/election/pairs/detail:
+    post:
+      consumes:
+      - application/json
+      description: Create or Update Election Pair Detail
+      parameters:
+      - description: Detail Request
+        in: body
+        name: detail
+        required: true
+        schema:
+          $ref: '#/definitions/request.ElectionPairDetailRequest'
       produces:
       - application/json
       responses:
@@ -276,7 +345,7 @@ paths:
   /v1/election/pairs/register:
     post:
       consumes:
-      - application/json
+      - multipart/form-data
       description: Register Election Pair (President and Vice President)
       parameters:
       - description: Authorized User
@@ -291,12 +360,11 @@ paths:
         in: header
         name: X-Role
         type: string
-      - description: Registration Request
-        in: body
+      - description: Registration Request (JSON String)
+        in: formData
         name: pair
         required: true
-        schema:
-          $ref: '#/definitions/request.ElectionPairRegistrationRequest'
+        type: string
       - description: Pair Photo (jpg, jpeg, png only)
         in: formData
         name: pair_photo

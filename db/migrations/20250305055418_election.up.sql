@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS "election_pair_details" (
     vision TEXT,
     mission TEXT,
     work_program TEXT,
+    work_program_docs JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -69,21 +70,6 @@ CREATE TABLE IF NOT EXISTS "supporting_parties" (
     CONSTRAINT uq_supporting_party UNIQUE(election_pair_id, party_id, is_deleted)
 );
 
-CREATE TABLE IF NOT EXISTS program_documents (
-    id UUID NOT NULL PRIMARY KEY,
-    election_pair_detail_id UUID NOT NULL,
-    document_path VARCHAR(512) NOT NULL,
-    document_type VARCHAR(50) NOT NULL,
-    original_filename VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-
-    CONSTRAINT fk_program_doc_detail
-    FOREIGN KEY (election_pair_detail_id)
-    REFERENCES election_pair_details(id)
-    ON DELETE CASCADE
-);
 
 
 -- Indexes for better query performance
@@ -91,7 +77,6 @@ CREATE INDEX idx_election_pairs_election_no ON election_pairs(election_no);
 CREATE INDEX idx_election_pairs_is_active ON election_pairs(is_active) WHERE is_deleted = FALSE;
 CREATE INDEX idx_supporting_parties_election_pair_id ON supporting_parties(election_pair_id) WHERE is_deleted = FALSE;
 CREATE INDEX idx_supporting_parties_party_id ON supporting_parties(party_id) WHERE is_deleted = FALSE;
-CREATE INDEX idx_program_docs_detail_id ON program_documents(election_pair_detail_id) WHERE is_deleted = FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_president_education ON election_pairs USING GIN (president_education_history);
 CREATE INDEX IF NOT EXISTS idx_president_work ON election_pairs USING GIN (president_work_experience);
