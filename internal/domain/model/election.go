@@ -21,12 +21,12 @@ type ElectionPair struct {
 
 type PairDetail struct {
 	BaseModel
-	ID             uuid.UUID `db:"id"`
-	ElectionPairID uuid.UUID `db:"election_pair_id"`
-	Vision         string    `db:"vision"`
-	Mission        string    `db:"mission"`
-	WorkProgram    string    `db:"work_program"`
-	ProgramDocs    []string  `db:"program_docs"`
+	ID             uuid.UUID     `db:"id"`
+	ElectionPairID uuid.UUID     `db:"election_pair_id"`
+	Vision         string        `db:"vision"`
+	Mission        string        `db:"mission"`
+	WorkProgram    []WorkProgram `db:"work_program"`
+	ProgramDocs    string        `db:"program_docs"`
 }
 
 type CandidateInfo struct {
@@ -127,6 +127,15 @@ func ConstructPairDetail(req *request.ElectionPairDetailRequest) *PairDetail {
 	now := time.Now()
 	detailID := uuid.New()
 
+	workProgram := make([]WorkProgram, len(req.WorkProgram))
+	for i, wp := range req.WorkProgram {
+		workProgram[i] = WorkProgram{
+			ProgramName:  wp.ProgramName,
+			ProgramPhoto: wp.ProgramPhoto,
+			ProgramDesc:  wp.ProgramDesc,
+		}
+	}
+
 	detail := &PairDetail{
 		BaseModel: BaseModel{
 			CreatedAt: now,
@@ -137,7 +146,7 @@ func ConstructPairDetail(req *request.ElectionPairDetailRequest) *PairDetail {
 		ElectionPairID: uuid.MustParse(req.ElectionPairID),
 		Vision:         req.Vision,
 		Mission:        req.Mission,
-		WorkProgram:    req.WorkProgram,
+		WorkProgram:    workProgram,
 		ProgramDocs:    req.ProgramDocs,
 	}
 

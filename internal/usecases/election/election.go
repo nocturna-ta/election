@@ -513,6 +513,29 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 	transaction := func(txCtx context.Context) (any, error) {
 		detail = model.ConstructPairDetail(req)
 
+		if detail.ProgramDocs != "" {
+			_ = fileutils.DeleteFile(txCtx, detail.ProgramDocs)
+		}
+
+		fileConfig := fileutils.DefaultConfig()
+		fileConfig.SetAllowedDocumentExtensions()
+		fileConfig.EntityType = "election_pair/docs"
+
+		programDocs, err := fileutils.StoreFile(txCtx, req.ProgramDocsFile, req.ProgramDocsName, fileConfig)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store program docs")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to store program docs",
+				Cause:   err,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
+		}
+
+		detail.ProgramDocs = programDocs
+
 		if err := m.electionRepo.UpsertPairDetail(txCtx, detail); err != nil {
 			if errors.Is(err, dao.ErrDuplicate) {
 				return nil, &custerr.ErrChain{
@@ -534,12 +557,21 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 		return nil, err
 	}
 
+	workProgram := make([]response.WorkProgramResponse, len(detail.WorkProgram))
+	for i, program := range detail.WorkProgram {
+		workProgram[i] = response.WorkProgramResponse{
+			ProgramName:  program.ProgramName,
+			ProgramPhoto: program.ProgramPhoto,
+			ProgramDesc:  program.ProgramDesc,
+		}
+	}
+
 	return &response.ElectionPairDetailResponse{
 		ID:             detail.ID.String(),
 		ElectionPairID: detail.ElectionPairID.String(),
 		Vision:         detail.Vision,
 		Mission:        detail.Mission,
-		WorkProgram:    detail.WorkProgram,
+		WorkProgram:    workProgram,
 		ProgramDocs:    detail.ProgramDocs,
 	}, nil
 }
@@ -575,12 +607,21 @@ func (m *Module) GetElectionPairDetail(ctx context.Context, pairID string) (*res
 		return nil, err
 	}
 
+	workProgram := make([]response.WorkProgramResponse, len(detail.WorkProgram))
+	for i, program := range detail.WorkProgram {
+		workProgram[i] = response.WorkProgramResponse{
+			ProgramName:  program.ProgramName,
+			ProgramPhoto: program.ProgramPhoto,
+			ProgramDesc:  program.ProgramDesc,
+		}
+	}
+
 	return &response.ElectionPairDetailResponse{
 		ID:             detail.ID.String(),
 		ElectionPairID: detail.ElectionPairID.String(),
 		Vision:         detail.Vision,
 		Mission:        detail.Mission,
-		WorkProgram:    detail.WorkProgram,
+		WorkProgram:    workProgram,
 		ProgramDocs:    detail.ProgramDocs,
 	}, nil
 }
@@ -678,7 +719,7 @@ func (m *Module) GetVicePresidentPhoto(ctx context.Context, id uuid.UUID) (*http
 		}
 	}
 
-	file, contentType, err := filehandler.GetFileFromPath(ctx, election.President.PhotoPath, filehandler.DisplayModeAttachment)
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.VicePresident.PhotoPath, filehandler.DisplayModeInline)
 	if err != nil {
 		return nil, "", &custerr.ErrChain{
 			Message: "Failed to get file",

@@ -49,12 +49,22 @@ type ElectionPairActivationRequest struct {
 	SignedTransaction string `json:"signed_transaction"`
 }
 
+type WorkProgramRequest struct {
+	ProgramName      string    `json:"program_name"`
+	ProgramPhoto     string    `json:"program_photo"`
+	ProgramPhotoFile io.Reader `json:"-" swaggerignore:"true"`
+	ProgramPhotoName string    `json:"-" swaggerignore:"true"`
+	ProgramDesc      []string  `json:"program_desc"`
+}
+
 type ElectionPairDetailRequest struct {
-	ElectionPairID string   `json:"election_pair_id"`
-	Vision         string   `json:"vision"`
-	Mission        string   `json:"mission"`
-	WorkProgram    string   `json:"work_program"`
-	ProgramDocs    []string `json:"program_docs"`
+	ElectionPairID  string               `json:"election_pair_id"`
+	Vision          string               `json:"vision"`
+	Mission         string               `json:"mission"`
+	WorkProgram     []WorkProgramRequest `json:"work_program"`
+	ProgramDocs     string               `json:"program_docs"`
+	ProgramDocsFile io.Reader            `json:"-" swaggerignore:"true"`
+	ProgramDocsName string               `json:"-" swaggerignore:"true"`
 }
 
 func (req *ElectionPairRegistrationRequest) ValidateRegistrationRequest() error {

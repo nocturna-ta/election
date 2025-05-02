@@ -2,10 +2,8 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/nocturna-ta/election/internal/infrastructures/cutresp"
-	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/pkg/utils"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/http/filehandler"
@@ -195,8 +193,12 @@ func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) 
 // @Summary 	Election Detail
 // @Description	Create or Update Election Pair Detail
 // @Tags		Election
-// @Accept		json
-// @Param 		detail body request.ElectionPairDetailRequest true "Detail Request"
+// @Accept 		multipart/form-data
+// @Param 		X-User-Id header string false "Authorized User"
+// @Param 		X-Address-Id header string false "Authorized Address"
+// @Param 		X-Role header string false "Authorized Role"
+// @Param 		detail formData string true "Detail Request (JSON string)"
+// @Param 		work_program formData file true "Work Program (docx, pdf only)"
 // @Produce		json
 // @Success		200	{object}	jsonResponse{data=response.ElectionPairDetailResponse}
 // @Router		/v1/election/pairs/detail	[post]
@@ -204,17 +206,35 @@ func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Reques
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.UpsertElectionPairDetail")
 	defer span.End()
 
-	var detailReq request.ElectionPairDetailRequest
-	err := json.Unmarshal(req.RawBody(), &detailReq)
+	form, err := req.RawRequest().MultipartForm()
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Failed to parse multipart form",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		})
+	}
+
+	fileConfigs := []utils.FileUploadConfig{{
+		FieldName:  "work_program",
+		Required:   true,
+		UploadFunc: filehandler.DocumentUploadOptions,
+	}}
+
+	uploadedFiles, err := utils.ProcessFileUploads(ctx, form, fileConfigs)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	if err := detailReq.ValidateDetailRequest(); err != nil {
+	defer utils.CloseFiles(uploadedFiles)
+
+	detailRequest, err := utils.ParseUpsertDetailRequest(form, uploadedFiles)
+	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	res, err := api.electionUc.UpsertElectionPairDetail(ctx, &detailReq)
+	res, err := api.electionUc.UpsertElectionPairDetail(ctx, detailRequest)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}

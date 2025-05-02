@@ -40,6 +40,18 @@ type ElectionPairDTO struct {
 	IsDeleted bool      `db:"is_deleted"`
 }
 
+type ElectionPairDetailDTO struct {
+	ID             uuid.UUID       `db:"id"`
+	ElectionPairID uuid.UUID       `db:"election_pair_id"`
+	Vision         string          `db:"vision"`
+	Mission        string          `db:"mission"`
+	WorkProgram    json.RawMessage `db:"work_program"`
+	ProgramDocs    string          `db:"program_docs"`
+	CreatedAt      time.Time       `db:"created_at"`
+	UpdatedAt      time.Time       `db:"updated_at"`
+	IsDeleted      bool            `db:"is_deleted"`
+}
+
 func (dto *ElectionPairDTO) ToDomain() (*ElectionPair, error) {
 
 	var (
@@ -108,5 +120,29 @@ func (dto *ElectionPairDTO) ToDomain() (*ElectionPair, error) {
 			Job:              dto.VicePresidentJob,
 			PhotoPath:        dto.VicePresidentPhotoPath,
 		},
+	}, nil
+}
+
+func (dto *ElectionPairDetailDTO) ToDomain() (*PairDetail, error) {
+	var workProgram []WorkProgram
+
+	if len(dto.WorkProgram) > 0 {
+		if err := json.Unmarshal(dto.WorkProgram, &workProgram); err != nil {
+			return nil, err
+		}
+	}
+
+	return &PairDetail{
+		BaseModel: BaseModel{
+			CreatedAt: dto.CreatedAt,
+			UpdatedAt: dto.UpdatedAt,
+			IsDeleted: dto.IsDeleted,
+		},
+		ID:             dto.ID,
+		ElectionPairID: dto.ElectionPairID,
+		Vision:         dto.Vision,
+		Mission:        dto.Mission,
+		WorkProgram:    workProgram,
+		ProgramDocs:    dto.ProgramDocs,
 	}, nil
 }

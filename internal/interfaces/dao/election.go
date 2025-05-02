@@ -69,10 +69,10 @@ const (
 
 	insertPairDetail = `
 		INSERT INTO election_pair_details (
-			id, election_pair_id, vision, mission, work_program,
+			id, election_pair_id, vision, mission, work_program, work_program_docs,
 			created_at, updated_at, is_deleted
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8
+			$1, $2, $3, $4, $5, $6, $7, $8, $9
 		)
 	`
 	selectPairDetail = `SELECT %s FROM election_pair_details %s WHERE TRUE %s`
@@ -582,9 +582,17 @@ func (e *ElectionRepository) UpsertPairDetail(ctx context.Context, detail *model
 		return err
 	}
 
-	setQuery := `vision = $1, mission = $2, work_program = $3, updated_at = $4`
-	whereQuery := ` AND election_pair_id = $5 AND is_deleted = false`
-	updateArgs = append(updateArgs, detail.Vision, detail.Mission, detail.WorkProgram, detail.UpdatedAt, detail.ElectionPairID)
+	workProgramJSON, err := json.Marshal(&detail.WorkProgram)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpsertPairDetail] Failed to marshal work program")
+		return err
+	}
+
+	setQuery := `vision = $1, mission = $2, work_program = $3, work_program_docs = $4, updated_at = $5`
+	whereQuery := ` AND election_pair_id = $6 AND is_deleted = false`
+	updateArgs = append(updateArgs, detail.Vision, detail.Mission, workProgramJSON, detail.ProgramDocs, detail.UpdatedAt, detail.ElectionPairID)
 
 	queryUpdate := fmt.Sprintf(updatePairDetail, setQuery, whereQuery)
 
@@ -596,7 +604,8 @@ func (e *ElectionRepository) UpsertPairDetail(ctx context.Context, detail *model
 			detail.ElectionPairID,
 			detail.Vision,
 			detail.Mission,
-			detail.WorkProgram,
+			workProgramJSON,
+			detail.ProgramDocs,
 			detail.CreatedAt,
 			detail.UpdatedAt,
 			detail.IsDeleted,
@@ -675,8 +684,6 @@ func (e *ElectionRepository) GetPairDetailByPairID(ctx context.Context, pairID u
 		}).ErrorWithCtx(ctx, "[ElectionRepository.GetPairDetailByPairID] Failed to get program documents")
 		return nil, err
 	}
-
-	detail.ProgramDocs = docsPath
 
 	return &detail, nil
 

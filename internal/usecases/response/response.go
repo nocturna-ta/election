@@ -24,6 +24,12 @@ type WorkHistoryResponse struct {
 	Year          string `json:"year"`
 }
 
+type WorkProgramResponse struct {
+	ProgramName  string   `json:"program_name"`
+	ProgramPhoto string   `json:"program_photo"`
+	ProgramDesc  []string `json:"program_desc"`
+}
+
 type ElectionPairResponse struct {
 	ID            string                `json:"id"`
 	ElectionNo    string                `json:"election_no"`
@@ -35,12 +41,12 @@ type ElectionPairResponse struct {
 }
 
 type ElectionPairDetailResponse struct {
-	ID             string   `json:"id"`
-	ElectionPairID string   `json:"election_pair_id"`
-	Vision         string   `json:"vision"`
-	Mission        string   `json:"mission"`
-	WorkProgram    string   `json:"work_program"`
-	ProgramDocs    []string `json:"program_docs,omitempty"`
+	ID             string                `json:"id"`
+	ElectionPairID string                `json:"election_pair_id"`
+	Vision         string                `json:"vision"`
+	Mission        string                `json:"mission"`
+	WorkProgram    []WorkProgramResponse `json:"work_program"`
+	ProgramDocs    string                `json:"program_docs"`
 }
 
 type ElectionPairActivationResponse struct {
