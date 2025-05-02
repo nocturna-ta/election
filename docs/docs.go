@@ -96,9 +96,9 @@ const docTemplate = `{
         },
         "/v1/election/pairs/detail": {
             "post": {
-                "description": "Create or Update Election Pair Detail",
+                "description": "Create or Update Election Pair Detail with multiple work programs. For work program photos, use naming convention 'work_program_photo_[index]' where index matches the position in the work_program array.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -106,16 +106,45 @@ const docTemplate = `{
                 "tags": [
                     "Election"
                 ],
-                "summary": "Election Detail",
+                "summary": "Create or update election pair details with support for multiple work program photos",
                 "parameters": [
                     {
-                        "description": "Detail Request",
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Detail Request (JSON String)",
                         "name": "detail",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.ElectionPairDetailRequest"
-                        }
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Program Documents (pdf, docx only)",
+                        "name": "program_docs",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Photos for work programs (jpg, jpeg, png only). Use pattern work_program_photo_0, work_program_photo_1, etc.",
+                        "name": "work_program_photo_*",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -572,29 +601,6 @@ const docTemplate = `{
                 }
             }
         },
-        "request.ElectionPairDetailRequest": {
-            "type": "object",
-            "properties": {
-                "election_pair_id": {
-                    "type": "string"
-                },
-                "mission": {
-                    "type": "string"
-                },
-                "program_docs": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "vision": {
-                    "type": "string"
-                },
-                "work_program": {
-                    "type": "string"
-                }
-            }
-        },
         "response.CandidateInfoResponse": {
             "type": "object",
             "properties": {
@@ -660,16 +666,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "program_docs": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "type": "string"
                 },
                 "vision": {
                     "type": "string"
                 },
                 "work_program": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.WorkProgramResponse"
+                    }
                 }
             }
         },
@@ -723,6 +729,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "year": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.WorkProgramResponse": {
+            "type": "object",
+            "properties": {
+                "program_desc": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "program_name": {
+                    "type": "string"
+                },
+                "program_photo": {
                     "type": "string"
                 }
             }

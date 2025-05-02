@@ -2,8 +2,11 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/nocturna-ta/election/internal/infrastructures/cutresp"
+	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/pkg/utils"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/http/filehandler"
@@ -11,6 +14,9 @@ import (
 	"github.com/nocturna-ta/golib/response/rest"
 	"github.com/nocturna-ta/golib/router"
 	"github.com/nocturna-ta/golib/tracing"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 // RegisterElectionPair godoc
@@ -190,22 +196,24 @@ func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) 
 }
 
 // UpsertElectionPairDetail godoc
-// @Summary 	Election Detail
-// @Description	Create or Update Election Pair Detail
-// @Tags		Election
-// @Accept 		multipart/form-data
-// @Param 		X-User-Id header string false "Authorized User"
-// @Param 		X-Address-Id header string false "Authorized Address"
-// @Param 		X-Role header string false "Authorized Role"
-// @Param 		detail formData string true "Detail Request (JSON string)"
-// @Param 		work_program formData file true "Work Program (docx, pdf only)"
-// @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.ElectionPairDetailResponse}
-// @Router		/v1/election/pairs/detail	[post]
+// @Summary     Create or update election pair details with support for multiple work program photos
+// @Description Create or Update Election Pair Detail with multiple work programs. For work program photos, use naming convention 'work_program_photo_[index]' where index matches the position in the work_program array.
+// @Tags        Election
+// @Accept      multipart/form-data
+// @Param       X-User-Id header string false "Authorized User"
+// @Param       X-Address-Id header string false "Authorized Address"
+// @Param       X-Role header string false "Authorized Role"
+// @Param       detail formData string true "Detail Request (JSON String)"
+// @Param       program_docs formData file true "Program Documents (pdf, docx only)"
+// @Param       work_program_photo_* formData file false "Photos for work programs (jpg, jpeg, png only). Use pattern work_program_photo_0, work_program_photo_1, etc."
+// @Produce     json
+// @Success     200 {object} jsonResponse{data=response.ElectionPairDetailResponse}
+// @Router      /v1/election/pairs/detail [post]
 func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.UpsertElectionPairDetail")
 	defer span.End()
 
+	// Get multipart form
 	form, err := req.RawRequest().MultipartForm()
 	if err != nil {
 		return cutresp.CustomErrorResponse(&custerr.ErrChain{
@@ -216,25 +224,85 @@ func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Reques
 		})
 	}
 
-	fileConfigs := []utils.FileUploadConfig{{
-		FieldName:  "work_program",
-		Required:   true,
-		UploadFunc: filehandler.DocumentUploadOptions,
-	}}
+	// Get the detail JSON from the form
+	detailValues := form.Value["detail"]
+	if len(detailValues) == 0 {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Missing detail data",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		})
+	}
 
-	uploadedFiles, err := utils.ProcessFileUploads(ctx, form, fileConfigs)
-	if err != nil {
+	// Parse the detail JSON
+	var detailReq request.ElectionPairDetailRequest
+	if err := json.Unmarshal([]byte(detailValues[0]), &detailReq); err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Invalid JSON in detail request",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		})
+	}
+
+	// Validate the detail request
+	if err := detailReq.ValidateDetailRequest(); err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}
 
-	defer utils.CloseFiles(uploadedFiles)
+	// Process program docs
+	if fileHeaders, ok := form.File["program_docs"]; ok && len(fileHeaders) > 0 {
+		file, err := fileHeaders[0].Open()
+		if err != nil {
+			return cutresp.CustomErrorResponse(&custerr.ErrChain{
+				Message: "Failed to open program docs file",
+				Code:    400,
+				Type:    response.ErrBadRequest,
+				Cause:   err,
+			})
+		}
+		defer file.Close()
 
-	detailRequest, err := utils.ParseUpsertDetailRequest(form, uploadedFiles)
-	if err != nil {
-		return cutresp.CustomErrorResponse(err)
+		detailReq.ProgramDocsName = fileHeaders[0].Filename
+		detailReq.ProgramDocsFile = file
 	}
 
-	res, err := api.electionUc.UpsertElectionPairDetail(ctx, detailRequest)
+	// Process work program photos
+	// This uses a regex to match field names like work_program_photo_0, work_program_photo_1, etc.
+	for fieldName, fileHeaders := range form.File {
+		if matched, _ := regexp.MatchString(`^work_program_photo_\d+$`, fieldName); matched && len(fileHeaders) > 0 {
+			// Extract the index from the field name
+			indexStr := strings.TrimPrefix(fieldName, "work_program_photo_")
+			index, err := strconv.Atoi(indexStr)
+			if err != nil {
+				continue // Skip if index cannot be parsed
+			}
+
+			// Check if the index is valid for the work program array
+			if index < 0 || index >= len(detailReq.WorkProgram) {
+				continue // Skip if index is out of bounds
+			}
+
+			// Open the file
+			file, err := fileHeaders[0].Open()
+			if err != nil {
+				return cutresp.CustomErrorResponse(&custerr.ErrChain{
+					Message: fmt.Sprintf("Failed to open work program photo %s", fieldName),
+					Code:    400,
+					Type:    response.ErrBadRequest,
+					Cause:   err,
+				})
+			}
+			defer file.Close()
+
+			// Associate the file with the work program
+			detailReq.WorkProgram[index].ProgramPhotoName = fileHeaders[0].Filename
+			detailReq.WorkProgram[index].ProgramPhotoFile = file
+		}
+	}
+
+	// Call the use case
+	res, err := api.electionUc.UpsertElectionPairDetail(ctx, &detailReq)
 	if err != nil {
 		return cutresp.CustomErrorResponse(err)
 	}

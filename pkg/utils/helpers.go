@@ -12,8 +12,10 @@ import (
 	"github.com/nocturna-ta/golib/http/filehandler"
 	"github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/router"
+	"github.com/nocturna-ta/golib/tracing"
 	"io"
 	"mime/multipart"
+	"regexp"
 )
 
 type FileUploadConfig struct {
@@ -109,8 +111,54 @@ func MapFileUploadError(err error, config FileUploadConfig) *custerr.ErrChain {
 	}
 }
 
-// This function is now moved to pkg/utils/request_helper.go to break the dependency cycle
-// Moving it to a separate file that will depend on request, but not be imported by request
+func ProcessWorkProgramPhotos(ctx context.Context, form *multipart.Form) (map[string]UploadedFile, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Utils.ProcessWorkProgramPhotos")
+	defer span.End()
+
+	result := make(map[string]UploadedFile)
+
+	pattern := regexp.MustCompile(`^work_program_photo_(\d+)$`)
+
+	for fieldName, _ := range form.File {
+		matches := pattern.FindStringSubmatch(fieldName)
+		if len(matches) < 2 {
+			continue
+		}
+
+		uploadOptions := filehandler.ImageUploadOptions()
+		uploadOptions.FieldName = fieldName
+
+		uploadResult, err := filehandler.UploadFile(ctx, form, uploadOptions)
+		if err != nil {
+			return nil, &custerr.ErrChain{
+				Message: fmt.Sprintf("Failed to upload work program photo %s: %v", fieldName, err),
+				Code:    400,
+				Type:    response.ErrBadRequest,
+				Cause:   err,
+			}
+		}
+
+		file, err := fileutils.OpenFile(ctx, uploadResult.FilePath)
+		if err != nil {
+			return nil, &custerr.ErrChain{
+				Message: fmt.Sprintf("Failed to open uploaded file: %s", fieldName),
+				Code:    500,
+				Type:    response.ErrInternalServerError,
+				Cause:   err,
+			}
+		}
+
+		result[fieldName] = UploadedFile{
+			File:             file,
+			OriginalFilename: uploadResult.OriginalFilename,
+			FilePath:         uploadResult.FilePath,
+			ContentType:      uploadResult.ContentType,
+			Size:             uploadResult.Size,
+		}
+	}
+
+	return result, nil
+}
 
 func CloseFiles(files map[string]UploadedFile) {
 	for _, fileInfo := range files {

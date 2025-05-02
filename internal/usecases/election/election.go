@@ -519,7 +519,7 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 
 		fileConfig := fileutils.DefaultConfig()
 		fileConfig.SetAllowedDocumentExtensions()
-		fileConfig.EntityType = "election_pair/docs"
+		fileConfig.EntityType = "election_pair"
 
 		programDocs, err := fileutils.StoreFile(txCtx, req.ProgramDocsFile, req.ProgramDocsName, fileConfig)
 		if err != nil {
@@ -536,7 +536,37 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 
 		detail.ProgramDocs = programDocs
 
+		for i, program := range req.WorkProgram {
+			if program.ProgramPhotoFile != nil {
+				fileConfigPhoto := fileutils.DefaultConfig()
+				fileConfigPhoto.SetAllowedImageExtension()
+				fileConfigPhoto.EntityType = "election_pair"
+
+				photoPath, err := fileutils.StoreFile(txCtx, program.ProgramPhotoFile, program.ProgramPhotoName, fileConfigPhoto)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"error": err,
+						"index": i,
+					}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store work program photo")
+					return nil, &custerr.ErrChain{
+						Message: "Failed to store work program photo",
+						Cause:   err,
+						Code:    500,
+						Type:    response2.ErrInternalServerError,
+					}
+				}
+
+				detail.WorkProgram[i].ProgramPhoto = photoPath
+			}
+		}
+
 		if err := m.electionRepo.UpsertPairDetail(txCtx, detail); err != nil {
+			_ = fileutils.DeleteFile(txCtx, detail.ProgramDocs)
+			for _, program := range detail.WorkProgram {
+				if program.ProgramPhoto != "" {
+					_ = fileutils.DeleteFile(txCtx, program.ProgramPhoto)
+				}
+			}
 			if errors.Is(err, dao.ErrDuplicate) {
 				return nil, &custerr.ErrChain{
 					Message: "Election Pair Detail already exists",

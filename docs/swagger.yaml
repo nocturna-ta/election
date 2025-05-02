@@ -17,21 +17,6 @@ definitions:
       message:
         type: string
     type: object
-  request.ElectionPairDetailRequest:
-    properties:
-      election_pair_id:
-        type: string
-      mission:
-        type: string
-      program_docs:
-        items:
-          type: string
-        type: array
-      vision:
-        type: string
-      work_program:
-        type: string
-    type: object
   response.CandidateInfoResponse:
     properties:
       birth_date:
@@ -75,13 +60,13 @@ definitions:
       mission:
         type: string
       program_docs:
-        items:
-          type: string
-        type: array
+        type: string
       vision:
         type: string
       work_program:
-        type: string
+        items:
+          $ref: '#/definitions/response.WorkProgramResponse'
+        type: array
     type: object
   response.ElectionPairListResponse:
     properties:
@@ -116,6 +101,17 @@ definitions:
       position:
         type: string
       year:
+        type: string
+    type: object
+  response.WorkProgramResponse:
+    properties:
+      program_desc:
+        items:
+          type: string
+        type: array
+      program_name:
+        type: string
+      program_photo:
         type: string
     type: object
 info:
@@ -341,15 +337,38 @@ paths:
   /v1/election/pairs/detail:
     post:
       consumes:
-      - application/json
-      description: Create or Update Election Pair Detail
+      - multipart/form-data
+      description: Create or Update Election Pair Detail with multiple work programs.
+        For work program photos, use naming convention 'work_program_photo_[index]'
+        where index matches the position in the work_program array.
       parameters:
-      - description: Detail Request
-        in: body
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Detail Request (JSON String)
+        in: formData
         name: detail
         required: true
-        schema:
-          $ref: '#/definitions/request.ElectionPairDetailRequest'
+        type: string
+      - description: Program Documents (pdf, docx only)
+        in: formData
+        name: program_docs
+        required: true
+        type: file
+      - description: Photos for work programs (jpg, jpeg, png only). Use pattern work_program_photo_0,
+          work_program_photo_1, etc.
+        in: formData
+        name: work_program_photo_*
+        type: file
       produces:
       - application/json
       responses:
@@ -362,7 +381,8 @@ paths:
                 data:
                   $ref: '#/definitions/response.ElectionPairDetailResponse'
               type: object
-      summary: Election Detail
+      summary: Create or update election pair details with support for multiple work
+        program photos
       tags:
       - Election
   /v1/election/pairs/number/{no}:

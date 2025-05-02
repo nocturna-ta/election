@@ -65,7 +65,7 @@ const (
 		)
 	`
 	selectElectionPair = `SELECT %s FROM election_pairs %s WHERE TRUE %s`
-	updateElectionPair = `UPDATE election_pairs SET %s = WHERE TRUE %s`
+	updateElectionPair = `UPDATE election_pairs SET %s WHERE TRUE %s`
 
 	insertPairDetail = `
 		INSERT INTO election_pair_details (
@@ -76,7 +76,7 @@ const (
 		)
 	`
 	selectPairDetail = `SELECT %s FROM election_pair_details %s WHERE TRUE %s`
-	updatePairDetail = `UPDATE election_pair_details SET %s = WHERE TRUE %s`
+	updatePairDetail = `UPDATE election_pair_details SET %s WHERE TRUE %s`
 )
 
 func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) error {
@@ -568,12 +568,12 @@ func (e *ElectionRepository) UpsertPairDetail(ctx context.Context, detail *model
 		err        error
 		updateArgs []any
 	)
-	countQuery := `SELECT COUNT(*) FROM election_pair_details WHERE id = $1`
+	countQuery := `SELECT COUNT(*) FROM election_pair_details WHERE election_pair_id = $1`
 
 	if sqlTrx != nil {
-		err = sqlTrx.GetContext(ctx, &count, countQuery, detail.ID)
+		err = sqlTrx.GetContext(ctx, &count, countQuery, detail.ElectionPairID)
 	} else {
-		err = e.db.GetMaster().GetContext(ctx, &count, countQuery, detail.ID)
+		err = e.db.GetMaster().GetContext(ctx, &count, countQuery, detail.ElectionPairID)
 	}
 	if err != nil {
 		log.WithFields(log.Fields{
