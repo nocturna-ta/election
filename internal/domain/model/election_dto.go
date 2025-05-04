@@ -46,7 +46,7 @@ type ElectionPairDetailDTO struct {
 	Vision         string          `db:"vision"`
 	Mission        string          `db:"mission"`
 	WorkProgram    json.RawMessage `db:"work_program"`
-	ProgramDocs    string          `db:"program_docs"`
+	ProgramDocs    string          `db:"work_program_docs"`
 	CreatedAt      time.Time       `db:"created_at"`
 	UpdatedAt      time.Time       `db:"updated_at"`
 	IsDeleted      bool            `db:"is_deleted"`

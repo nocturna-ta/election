@@ -172,7 +172,7 @@ func (api *API) GetElectionPairByID(ctx context.Context, req *router.Request) (*
 // GetElectionPairDetail godoc
 // @Summary 	Election Detail
 // @Description	Get Election Pair Detail
-// @Tags		Election
+// @Tags		Election-Detail
 // @Accept		json
 // @Param X-User-Id header string false "Authorized User"
 // @Param X-Address-Id header string false "Authorized Address"
@@ -198,7 +198,7 @@ func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) 
 // UpsertElectionPairDetail godoc
 // @Summary     Create or update election pair details with support for multiple work program photos
 // @Description Create or Update Election Pair Detail with multiple work programs. For work program photos, use naming convention 'work_program_photo_[index]' where index matches the position in the work_program array.
-// @Tags        Election
+// @Tags        Election-Detail
 // @Accept      multipart/form-data
 // @Param       X-User-Id header string false "Authorized User"
 // @Param       X-Address-Id header string false "Authorized Address"
@@ -313,7 +313,7 @@ func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Reques
 // GetElectionPairPhoto godoc
 // @Summary     Election Pair Photo
 // @Description Get Election Pair Photo
-// @Tags        Election
+// @Tags        Election-Images
 // @Param X-User-Id header string false "User"
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
@@ -346,7 +346,7 @@ func (api *API) GetElectionPairPhoto(ctx context.Context, req *router.Request) (
 // GetPresidentPhoto godoc
 // @Summary    President Photo
 // @Description Get President Photo
-// @Tags        Election
+// @Tags        Election-Images
 // @Param X-User-Id header string false "User"
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
@@ -379,7 +379,7 @@ func (api *API) GetPresidentPhoto(ctx context.Context, req *router.Request) (*re
 // GetVicePresidentPhoto godoc
 // @Summary    Vice President Photo
 // @Description Get Vice President Photo
-// @Tags        Election
+// @Tags        Election-Images
 // @Param X-User-Id header string false "User"
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
@@ -407,4 +407,36 @@ func (api *API) GetVicePresidentPhoto(ctx context.Context, req *router.Request) 
 	}
 
 	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
+}
+
+// ActivateElectionPair godoc
+// @Summary 	Election
+// @Description	Activate Election Pair
+// @Tags		Election
+// @Accept		json
+// @Param X-User-Id header string false "Authorized User"
+// @Param X-Address-Id header string false "Authorized Address"
+// @Param X-Role header string false "Authorized Role"
+// @Param 		activateElection body request.ElectionPairActivationRequest true "Activate Election Pair Request"
+// @Produce		json
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairActivationResponse}
+// @Router		/v1/election/pairs/{id}/activate	[put]
+func (api *API) ActivateElectionPair(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.ActivateElectionPair")
+	defer span.End()
+
+	var activateRequest request.ElectionPairActivationRequest
+	err := json.Unmarshal(req.RawBody(), &activateRequest)
+
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	res, err := api.electionUc.ActivateElectionPair(ctx, &activateRequest)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	return rest.NewJSONResponse().SetData(res), nil
+
 }

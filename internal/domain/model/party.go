@@ -1,6 +1,10 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/nocturna-ta/election/internal/usecases/request"
+	"time"
+)
 
 type SupportingParty struct {
 	BaseModel
@@ -15,4 +19,22 @@ type Party struct {
 	ID       uuid.UUID `db:"id"`
 	Name     string    `db:"name"`
 	LogoPath string    `db:"logo_path"`
+}
+
+func ConstructPartyRegistration(req *request.PartyRegisterRequest) *Party {
+
+	now := time.Now()
+	id := uuid.New()
+
+	return &Party{
+		BaseModel: BaseModel{
+			CreatedAt: now,
+			UpdatedAt: now,
+			IsDeleted: false,
+		},
+		ID:       id,
+		Name:     req.Name,
+		LogoPath: req.LogoPath,
+	}
+
 }

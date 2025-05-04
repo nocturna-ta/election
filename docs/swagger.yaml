@@ -17,6 +17,13 @@ definitions:
       message:
         type: string
     type: object
+  request.ElectionPairActivationRequest:
+    properties:
+      id:
+        type: string
+      signed_transaction:
+        type: string
+    type: object
   response.CandidateInfoResponse:
     properties:
       birth_date:
@@ -50,6 +57,13 @@ definitions:
         type: string
       year:
         type: string
+    type: object
+  response.ElectionPairActivationResponse:
+    properties:
+      id:
+        type: string
+      is_active:
+        type: boolean
     type: object
   response.ElectionPairDetailResponse:
     properties:
@@ -206,6 +220,45 @@ paths:
       summary: Election
       tags:
       - Election
+  /v1/election/pairs/{id}/activate:
+    put:
+      consumes:
+      - application/json
+      description: Activate Election Pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Activate Election Pair Request
+        in: body
+        name: activateElection
+        required: true
+        schema:
+          $ref: '#/definitions/request.ElectionPairActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairActivationResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
   /v1/election/pairs/{id}/photo:
     get:
       description: Get Election Pair Photo
@@ -235,7 +288,7 @@ paths:
           description: OK
       summary: Election Pair Photo
       tags:
-      - Election
+      - Election-Images
   /v1/election/pairs/{id}/photo/president:
     get:
       description: Get President Photo
@@ -265,7 +318,7 @@ paths:
           description: OK
       summary: President Photo
       tags:
-      - Election
+      - Election-Images
   /v1/election/pairs/{id}/photo/vice-president:
     get:
       description: Get Vice President Photo
@@ -295,7 +348,7 @@ paths:
           description: OK
       summary: Vice President Photo
       tags:
-      - Election
+      - Election-Images
   /v1/election/pairs/{pairID}/detail:
     get:
       consumes:
@@ -333,7 +386,7 @@ paths:
               type: object
       summary: Election Detail
       tags:
-      - Election
+      - Election-Detail
   /v1/election/pairs/detail:
     post:
       consumes:
@@ -384,7 +437,7 @@ paths:
       summary: Create or update election pair details with support for multiple work
         program photos
       tags:
-      - Election
+      - Election-Detail
   /v1/election/pairs/number/{no}:
     get:
       consumes:

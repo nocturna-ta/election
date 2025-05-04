@@ -26,7 +26,7 @@ type PairDetail struct {
 	Vision         string        `db:"vision"`
 	Mission        string        `db:"mission"`
 	WorkProgram    []WorkProgram `db:"work_program"`
-	ProgramDocs    string        `db:"program_docs"`
+	ProgramDocs    string        `db:"work_program_docs"`
 }
 
 type CandidateInfo struct {

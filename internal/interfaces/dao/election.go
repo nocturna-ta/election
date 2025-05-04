@@ -19,6 +19,7 @@ import (
 	"github.com/nocturna-ta/golib/txmanager/utils"
 	"github.com/nocturna-ta/votechain-contract/binding/electionManager"
 	"github.com/nocturna-ta/votechain-contract/interfaces"
+	"time"
 )
 
 type ElectionRepository struct {
@@ -440,7 +441,7 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.ActivateElectionPair")
 	defer span.End()
-
+	// Convert signed transaction to tx
 	tx, err := utils2.StringToTx(signedTransaction)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -636,14 +637,14 @@ func (e *ElectionRepository) GetPairDetailByPairID(ctx context.Context, pairID u
 	defer span.End()
 
 	var (
-		detail model.PairDetail
-		err    error
-		args   []any
+		detailDTO model.ElectionPairDetailDTO
+		err       error
+		args      []any
 	)
 
 	sqlTrx := utils.GetSqlTx(ctx)
 
-	selectQuery := `id, election_pair_id, vision, mission, work_program, created_at, updated_at`
+	selectQuery := `id, election_pair_id, vision, mission, work_program, work_program_docs, created_at, updated_at`
 	whereClause := ` AND election_pair_id = $1 AND is_deleted = false`
 	joinQuery := ``
 	args = append(args, pairID)
@@ -651,9 +652,9 @@ func (e *ElectionRepository) GetPairDetailByPairID(ctx context.Context, pairID u
 	query := fmt.Sprintf(selectPairDetail, selectQuery, joinQuery, whereClause)
 
 	if sqlTrx != nil {
-		err = sqlTrx.GetContext(ctx, &detail, query, args...)
+		err = sqlTrx.GetContext(ctx, &detailDTO, query, args...)
 	} else {
-		err = e.db.GetMaster().GetContext(ctx, &detail, query, args...)
+		err = e.db.GetMaster().GetContext(ctx, &detailDTO, query, args...)
 	}
 
 	if err != nil {
@@ -669,23 +670,15 @@ func (e *ElectionRepository) GetPairDetailByPairID(ctx context.Context, pairID u
 		return nil, err
 	}
 
-	var docsPath []string
-	queryDocs := `SELECT document_path FROM election_pair_details WHERE election_pair_id = $1 AND is_deleted = false`
-	if sqlTrx != nil {
-		err = sqlTrx.SelectContext(ctx, &docsPath, queryDocs, pairID)
-	} else {
-		err = e.db.GetMaster().SelectContext(ctx, &docsPath, queryDocs, pairID)
-	}
-
-	if err != nil && !errors.Is(err, sql2.ErrNoRows) {
+	dtoToDomain, err := detailDTO.ToDomain()
+	if err != nil {
 		log.WithFields(log.Fields{
-			"error":    err,
-			"detailID": detail.ID,
-		}).ErrorWithCtx(ctx, "[ElectionRepository.GetPairDetailByPairID] Failed to get program documents")
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.GetPairDetailByPairID] Failed to convert pair detail model to domain")
 		return nil, err
 	}
 
-	return &detail, nil
+	return dtoToDomain, nil
 
 }
 
@@ -693,30 +686,103 @@ func (e *ElectionRepository) UpdateElectionPairPhoto(ctx context.Context, id uui
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateElectionPairPhoto")
 	defer span.End()
 
-	panic("implement me")
+	sqlTrx := utils.GetSqlTx(ctx)
+	var (
+		err  error
+		args []any
+	)
+
+	now := time.Now()
+
+	setQuery := "pair_photo_path = $1, updated_at = $2"
+	whereQuery := " AND id = $3 AND is_deleted = false"
+	args = append(args, photoPath, now, id)
+
+	query := fmt.Sprintf(updateElectionPair, setQuery, whereQuery)
+
+	if sqlTrx != nil {
+		_, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		_, err = e.db.GetMaster().ExecContext(ctx, query, args...)
+	}
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPairPhoto] Failed to update election pair photo")
+		return err
+	}
+
+	return nil
 }
 
 func (e *ElectionRepository) UpdatePresidentPhoto(ctx context.Context, id uuid.UUID, photoPath string) error {
-	//TODO implement me
-	panic("implement me")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdatePresidentPhoto")
+	defer span.End()
+
+	sqlTrx := utils.GetSqlTx(ctx)
+	var (
+		err  error
+		args []any
+	)
+
+	now := time.Now()
+
+	setQuery := "president_photo_path = $1, updated_at = $2"
+	whereQuery := " AND id = $3 AND is_deleted = false"
+	args = append(args, photoPath, now, id)
+
+	query := fmt.Sprintf(updateElectionPair, setQuery, whereQuery)
+
+	if sqlTrx != nil {
+		_, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		_, err = e.db.GetMaster().ExecContext(ctx, query, args...)
+	}
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdatePresidentPhoto] Failed to update president photo")
+		return err
+	}
+
+	return nil
 }
 
 func (e *ElectionRepository) UpdateVicePresidentPhoto(ctx context.Context, id uuid.UUID, photoPath string) error {
-	//TODO implement me
-	panic("implement me")
-}
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateVicePresidentPhoto")
+	defer span.End()
 
-func (e *ElectionRepository) GetPresidentPhotoPath(ctx context.Context, id uuid.UUID) (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
+	sqlTrx := utils.GetSqlTx(ctx)
+	var (
+		err  error
+		args []any
+	)
 
-func (e *ElectionRepository) GetVicePresidentPhotoPath(ctx context.Context, id uuid.UUID) (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
+	now := time.Now()
 
-func (e *ElectionRepository) GetElectionPairPhotoPath(ctx context.Context, id uuid.UUID) (string, error) {
-	//TODO implement me
-	panic("implement me")
+	setQuery := "vice_president_photo_path = $1, updated_at = $2"
+	whereQuery := " AND id = $3 AND is_deleted = false"
+	args = append(args, photoPath, now, id)
+
+	query := fmt.Sprintf(updateElectionPair, setQuery, whereQuery)
+
+	if sqlTrx != nil {
+		_, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		_, err = e.db.GetMaster().ExecContext(ctx, query, args...)
+	}
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateVicePresidentPhoto] Failed to update vice president photo")
+		return err
+	}
+
+	return nil
 }

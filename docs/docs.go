@@ -104,7 +104,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Election"
+                    "Election-Detail"
                 ],
                 "summary": "Create or update election pair details with support for multiple work program photos",
                 "parameters": [
@@ -376,6 +376,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/{id}/activate": {
+            "put": {
+                "description": "Activate Election Pair",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Activate Election Pair Request",
+                        "name": "activateElection",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.ElectionPairActivationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairActivationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{id}/photo": {
             "get": {
                 "description": "Get Election Pair Photo",
@@ -384,7 +448,7 @@ const docTemplate = `{
                     "image/png"
                 ],
                 "tags": [
-                    "Election"
+                    "Election-Images"
                 ],
                 "summary": "Election Pair Photo",
                 "parameters": [
@@ -429,7 +493,7 @@ const docTemplate = `{
                     "image/png"
                 ],
                 "tags": [
-                    "Election"
+                    "Election-Images"
                 ],
                 "summary": "President Photo",
                 "parameters": [
@@ -474,7 +538,7 @@ const docTemplate = `{
                     "image/png"
                 ],
                 "tags": [
-                    "Election"
+                    "Election-Images"
                 ],
                 "summary": "Vice President Photo",
                 "parameters": [
@@ -521,7 +585,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Election"
+                    "Election-Detail"
                 ],
                 "summary": "Election Detail",
                 "parameters": [
@@ -601,6 +665,17 @@ const docTemplate = `{
                 }
             }
         },
+        "request.ElectionPairActivationRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "signed_transaction": {
+                    "type": "string"
+                }
+            }
+        },
         "response.CandidateInfoResponse": {
             "type": "object",
             "properties": {
@@ -650,6 +725,17 @@ const docTemplate = `{
                 },
                 "year": {
                     "type": "string"
+                }
+            }
+        },
+        "response.ElectionPairActivationResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
                 }
             }
         },
