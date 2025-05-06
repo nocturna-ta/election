@@ -7,6 +7,7 @@ import (
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases"
 	"github.com/nocturna-ta/election/internal/usecases/election"
+	"github.com/nocturna-ta/election/internal/usecases/party"
 	"github.com/nocturna-ta/golib/database/sql"
 	"github.com/nocturna-ta/golib/ethereum"
 	"github.com/nocturna-ta/golib/event"
@@ -17,7 +18,8 @@ import (
 
 type container struct {
 	Cfg        config.MainConfig
-	ElectionUC usecases.ElectionUseCases
+	ElectionUc usecases.ElectionUseCases
+	PartyUc    usecases.PartyUseCases
 }
 
 type options struct {
@@ -32,6 +34,10 @@ func newContainer(opts *options) *container {
 		DB:              opts.DB,
 		ContractAddress: common.HexToAddress(opts.Cfg.Blockchain.ElectionManagerAddress),
 		Client:          opts.Client,
+	})
+
+	partyRepo := dao.NewPartyRepository(&dao.OptsPartyRepository{
+		DB: opts.DB,
 	})
 
 	txMgr, err := txmanager.New(context.Background(), &txmanager.DriverConfig{
@@ -49,9 +55,15 @@ func newContainer(opts *options) *container {
 		TxMgr:        txMgr,
 	})
 
+	partyUc := party.New(&party.Opts{
+		PartyRepo: partyRepo,
+		TxMgr:     txMgr,
+	})
+
 	return &container{
 		Cfg:        *opts.Cfg,
-		ElectionUC: electionUc,
+		ElectionUc: electionUc,
+		PartyUc:    partyUc,
 	}
 
 }

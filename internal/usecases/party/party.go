@@ -9,6 +9,7 @@ import (
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
 	"github.com/nocturna-ta/golib/custerr"
+	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/tracing"
@@ -25,8 +26,25 @@ func (m *Module) RegisterParty(ctx context.Context, req *request.PartyRegisterRe
 	transaction := func(txCtx context.Context) (any, error) {
 		party = model.ConstructPartyRegistration(req)
 
+		if req.LogoFile != nil {
+			fileConfig := fileutils.DefaultConfig()
+			fileConfig.SetAllowedImageExtension()
+			fileConfig.EntityType = "party"
+
+			logoPath, err := fileutils.StoreFile(txCtx, req.LogoFile, req.LogoName, fileConfig)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).ErrorWithCtx(txCtx, "[PartyUseCases.RegisterParty] failed to store logo file")
+				return nil, err
+			}
+
+			party.LogoPath = logoPath
+		}
+
 		errTx := m.partyRepo.InsertParty(txCtx, party)
 		if errTx != nil {
+			_ = fileutils.DeleteFile(txCtx, party.LogoPath)
 			if errors.Is(errTx, dao.ErrDuplicate) {
 				return nil, &custerr.ErrChain{
 					Message: "party already exists",
@@ -110,35 +128,121 @@ func (m *Module) UpdateParty(ctx context.Context, req *request.PartyUpdateReques
 	if err != nil {
 		return nil, err
 	}
-	existing, err := m.partyRepo.GetPartyByID(ctx, partyID)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"id":    req.ID,
-			"error": err,
-		}).ErrorWithCtx(ctx, "[PartyUseCases.UpdateParty] failed to get party by id")
-		return nil, err
+
+	var (
+		updatedParty *model.Party
+	)
+
+	transaction := func(txCtx context.Context) (any, error) {
+		existing, err := m.partyRepo.GetPartyByID(txCtx, partyID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"id":    req.ID,
+				"error": err,
+			}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to get party by id")
+			return nil, err
+		}
+
+		oldLogoPath := existing.LogoPath
+		existing.Name = req.Name
+
+		if req.LogoFile != nil {
+			fileConfig := fileutils.DefaultConfig()
+			fileConfig.SetAllowedImageExtension()
+			fileConfig.EntityType = "party"
+
+			logoPath, err := fileutils.StoreFile(txCtx, req.LogoFile, req.LogoName, fileConfig)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to store logo file")
+				return nil, err
+			}
+
+			existing.LogoPath = logoPath
+		}
+
+		updatedParty, err = m.partyRepo.UpdateParty(txCtx, existing)
+		if err != nil {
+			if req.LogoFile != nil && existing.LogoPath != "" {
+				_ = fileutils.DeleteFile(txCtx, existing.LogoPath)
+			}
+			log.WithFields(log.Fields{
+				"id":    req.ID,
+				"error": err,
+			}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to update party")
+			return nil, err
+		}
+
+		if req.LogoFile != nil && oldLogoPath != "" && oldLogoPath != existing.LogoPath {
+			_ = fileutils.DeleteFile(txCtx, oldLogoPath)
+		}
+
+		return nil, nil
 	}
 
-	existing.Name = req.Name
-	existing.LogoPath = req.LogoPath
-
-	err = m.partyRepo.UpdateParty(ctx, party)
+	_, err = m.txMgr.Execute(ctx, transaction, nil)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"id":    req.ID,
-			"error": err,
-		}).ErrorWithCtx(ctx, "[PartyUseCases.UpdateParty] failed to update party")
 		return nil, err
 	}
 
 	return &response.PartyResponse{
-		ID:       party.ID.String(),
-		Name:     party.Name,
-		LogoPath: party.LogoPath,
+		ID:       updatedParty.ID.String(),
+		Name:     updatedParty.Name,
+		LogoPath: updatedParty.LogoPath,
 	}, nil
 }
 
 func (m *Module) DeleteParty(ctx context.Context, id string) error {
-	//TODO implement me
-	panic("implement me")
+	span, ctx := tracing.StartSpanFromContext(ctx, "PartyUseCases.DeleteParty")
+	defer span.End()
+
+	partyID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	transaction := func(txCtx context.Context) (any, error) {
+		party, err := m.partyRepo.GetPartyByID(txCtx, partyID)
+		if err != nil {
+			if errors.Is(err, dao.ErrNoResult) {
+				return nil, &custerr.ErrChain{
+					Message: "party not found",
+					Cause:   err,
+					Code:    404,
+					Type:    response2.ErrNotFound,
+				}
+			}
+			log.WithFields(log.Fields{
+				"id":    id,
+				"error": err,
+			}).ErrorWithCtx(txCtx, "[PartyUseCases.DeleteParty] failed to get party by id")
+			return nil, err
+		}
+
+		err = m.partyRepo.DeleteParty(txCtx, partyID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"id":    id,
+				"error": err,
+			}).ErrorWithCtx(txCtx, "[PartyUseCases.DeleteParty] failed to delete party")
+			return nil, err
+		}
+		if party.LogoPath != "" {
+			err = fileutils.DeleteFile(txCtx, party.LogoPath)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"id":    id,
+					"error": err,
+				}).ErrorWithCtx(txCtx, "[PartyUseCases.DeleteParty] failed to delete party logo file")
+			}
+		}
+		return nil, nil
+	}
+
+	_, err = m.txMgr.Execute(ctx, transaction, nil)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -22,7 +22,6 @@ type Party struct {
 }
 
 func ConstructPartyRegistration(req *request.PartyRegisterRequest) *Party {
-
 	now := time.Now()
 	id := uuid.New()
 

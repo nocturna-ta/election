@@ -54,7 +54,8 @@ func run(cmd *cobra.Command, args []string) error {
 
 	server := api.New(&api.Options{
 		Cfg:        appContainer.Cfg,
-		ElectionUc: appContainer.ElectionUC,
+		ElectionUc: appContainer.ElectionUc,
+		PartyUc:    appContainer.PartyUc,
 	})
 
 	go server.Run()

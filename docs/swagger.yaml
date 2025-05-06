@@ -108,6 +108,15 @@ definitions:
       vote_count:
         type: integer
     type: object
+  response.PartyResponse:
+    properties:
+      id:
+        type: string
+      logo_path:
+        type: string
+      name:
+        type: string
+    type: object
   response.WorkHistoryResponse:
     properties:
       institute_name:
@@ -529,4 +538,193 @@ paths:
       summary: Election
       tags:
       - Election
+  /v1/party:
+    get:
+      consumes:
+      - application/json
+      description: Get all political parties
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/response.PartyResponse'
+                  type: array
+              type: object
+      summary: Get All Parties
+      tags:
+      - Party
+  /v1/party/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a political party by ID
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.jsonResponse'
+      summary: Party Deletion
+      tags:
+      - Party
+    get:
+      consumes:
+      - application/json
+      description: Get political party by ID
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Get Party
+      tags:
+      - Party
+  /v1/party/register:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Register a new political party with logo upload
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Registration Request (JSON String)
+        in: formData
+        name: party
+        required: true
+        type: string
+      - description: Party Logo (jpg, jpeg, png only)
+        in: formData
+        name: logo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Party Registration
+      tags:
+      - Party
+  /v1/party/update:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update a political party with optional logo upload
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Update Request (JSON String)
+        in: formData
+        name: party
+        required: true
+        type: string
+      - description: Party Logo (jpg, jpeg, png only)
+        in: formData
+        name: logo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Party Update
+      tags:
+      - Party
 swagger: "2.0"

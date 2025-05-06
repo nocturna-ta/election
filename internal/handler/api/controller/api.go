@@ -17,6 +17,7 @@ type API struct {
 	enableSwagger  bool
 	corsConfig     *router.CorsConfig
 	electionUc     usecases.ElectionUseCases
+	partyUc        usecases.PartyUseCases
 }
 
 type Options struct {
@@ -28,6 +29,7 @@ type Options struct {
 	EnableSwagger  bool
 	CorsConfig     *router.CorsConfig
 	ElectionUc     usecases.ElectionUseCases
+	PartyUc        usecases.PartyUseCases
 }
 
 func New(opts *Options) *API {
@@ -40,6 +42,7 @@ func New(opts *Options) *API {
 		enableSwagger:  opts.EnableSwagger,
 		corsConfig:     opts.CorsConfig,
 		electionUc:     opts.ElectionUc,
+		partyUc:        opts.PartyUc,
 	}
 }
 
@@ -83,6 +86,14 @@ func (api *API) RegisterRoute() *router.FastRouter {
 				pairs.GET("/:pairID/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
 				//pairs.GET("/:id/full", api.GetElectionPairFull, router.MustAuthorized(false))
 			})
+		})
+
+		v1.Group("/party", func(party *router.FastRouter) {
+			party.POST("/register", api.RegisterParty, router.MustAuthorized(false))
+			party.PUT("/update", api.UpdateParty, router.MustAuthorized(false))
+			party.GET("/:id", api.GetPartyByID, router.MustAuthorized(false))
+			party.DELETE("/:id", api.DeleteParty, router.MustAuthorized(false))
+			party.GET("", api.GetAllParties, router.MustAuthorized(false))
 		})
 	})
 	return myRouter

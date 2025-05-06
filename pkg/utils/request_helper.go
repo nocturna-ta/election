@@ -109,3 +109,69 @@ func ParseUpsertDetailRequest(form *multipart.Form, files map[string]UploadedFil
 
 	return &detailReq, nil
 }
+
+func ParsePartyRequest(form *multipart.Form, files map[string]UploadedFile, isUpdate bool) (*request.PartyRegisterRequest, error) {
+	partyValues := form.Value["party"]
+	if len(partyValues) == 0 {
+		return nil, &custerr.ErrChain{
+			Message: "Missing party data in 'party' field",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	partyJSON := partyValues[0]
+	var partyReq request.PartyRegisterRequest
+	if err := json.Unmarshal([]byte(partyJSON), &partyReq); err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid JSON in party request",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		}
+	}
+
+	if err := partyReq.Validate(); err != nil {
+		return nil, err
+	}
+
+	if logo, exists := files["logo"]; exists {
+		partyReq.LogoName = logo.OriginalFilename
+		partyReq.LogoFile = logo.File
+	}
+
+	return &partyReq, nil
+}
+
+func ParsePartyUpdateRequest(form *multipart.Form, files map[string]UploadedFile) (*request.PartyUpdateRequest, error) {
+	partyValues := form.Value["party"]
+	if len(partyValues) == 0 {
+		return nil, &custerr.ErrChain{
+			Message: "Missing party data in 'party' field",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	partyJSON := partyValues[0]
+	var updateReq request.PartyUpdateRequest
+	if err := json.Unmarshal([]byte(partyJSON), &updateReq); err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid JSON in party update request",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		}
+	}
+
+	if err := updateReq.Validate(); err != nil {
+		return nil, err
+	}
+
+	if logo, exists := files["logo"]; exists {
+		updateReq.LogoName = logo.OriginalFilename
+		updateReq.LogoFile = logo.File
+	}
+
+	return &updateReq, nil
+}

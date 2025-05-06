@@ -12,6 +12,7 @@ import (
 type Options struct {
 	Cfg        config.MainConfig
 	ElectionUc usecases.ElectionUseCases
+	PartyUc    usecases.PartyUseCases
 }
 
 type Handler struct {
@@ -33,6 +34,7 @@ func New(opts *Options) *Handler {
 		EnableSwagger:  opts.Cfg.API.EnableSwagger,
 		CorsConfig:     utils.ConvertToRouterCorsConfig(&opts.Cfg.Cors),
 		ElectionUc:     opts.ElectionUc,
+		PartyUc:        opts.PartyUc,
 	}).RegisterRoute()
 	return handler
 }
