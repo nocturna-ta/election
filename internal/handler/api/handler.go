@@ -10,9 +10,10 @@ import (
 )
 
 type Options struct {
-	Cfg        config.MainConfig
-	ElectionUc usecases.ElectionUseCases
-	PartyUc    usecases.PartyUseCases
+	Cfg               config.MainConfig
+	ElectionUc        usecases.ElectionUseCases
+	PartyUc           usecases.PartyUseCases
+	SupportingPartyUc usecases.SupportingPartyUseCases
 }
 
 type Handler struct {
@@ -26,15 +27,16 @@ func New(opts *Options) *Handler {
 		opts: opts,
 	}
 	handler.myRouter = controller.New(&controller.Options{
-		Prefix:         opts.Cfg.API.BasePath,
-		Port:           opts.Cfg.Server.Port,
-		ReadTimeout:    opts.Cfg.Server.ReadTimeout,
-		WriteTimeout:   opts.Cfg.Server.WriteTimeout,
-		RequestTimeout: opts.Cfg.API.APITimeout,
-		EnableSwagger:  opts.Cfg.API.EnableSwagger,
-		CorsConfig:     utils.ConvertToRouterCorsConfig(&opts.Cfg.Cors),
-		ElectionUc:     opts.ElectionUc,
-		PartyUc:        opts.PartyUc,
+		Prefix:            opts.Cfg.API.BasePath,
+		Port:              opts.Cfg.Server.Port,
+		ReadTimeout:       opts.Cfg.Server.ReadTimeout,
+		WriteTimeout:      opts.Cfg.Server.WriteTimeout,
+		RequestTimeout:    opts.Cfg.API.APITimeout,
+		EnableSwagger:     opts.Cfg.API.EnableSwagger,
+		CorsConfig:        utils.ConvertToRouterCorsConfig(&opts.Cfg.Cors),
+		ElectionUc:        opts.ElectionUc,
+		PartyUc:           opts.PartyUc,
+		SupportingPartyUc: opts.SupportingPartyUc,
 	}).RegisterRoute()
 	return handler
 }

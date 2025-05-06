@@ -314,6 +314,120 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/supporting-party": {
+            "post": {
+                "description": "Add a political party as a supporting party for an election pair",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Supporting-Party"
+                ],
+                "summary": "Add Supporting Party",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Add Supporting Party Request",
+                        "name": "supportingParty",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.AddSupportingPartyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.SupportingPartyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a political party from supporting an election pair",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Supporting-Party"
+                ],
+                "summary": "Remove Supporting Party",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Remove Supporting Party Request",
+                        "name": "supportingParty",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.RemoveSupportingPartyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.jsonResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{id}": {
             "get": {
                 "description": "Get Election Pair By ID",
@@ -637,6 +751,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/{pairID}/supporting-parties": {
+            "get": {
+                "description": "Get all supporting parties for an election pair",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Supporting-Party"
+                ],
+                "summary": "Get Supporting Parties",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "pairID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.SupportingPartiesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/party": {
             "get": {
                 "description": "Get all political parties",
@@ -940,6 +1116,51 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/party/{id}/photo": {
+            "get": {
+                "description": "Get Party Photo",
+                "produces": [
+                    "image/jpeg",
+                    "image/png"
+                ],
+                "tags": [
+                    "Party-Images"
+                ],
+                "summary": "Party Photo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Party Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -969,6 +1190,17 @@ const docTemplate = `{
                 }
             }
         },
+        "request.AddSupportingPartyRequest": {
+            "type": "object",
+            "properties": {
+                "election_pair_id": {
+                    "type": "string"
+                },
+                "party_id": {
+                    "type": "string"
+                }
+            }
+        },
         "request.ElectionPairActivationRequest": {
             "type": "object",
             "properties": {
@@ -976,6 +1208,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "signed_transaction": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.RemoveSupportingPartyRequest": {
+            "type": "object",
+            "properties": {
+                "election_pair_id": {
+                    "type": "string"
+                },
+                "party_id": {
                     "type": "string"
                 }
             }
@@ -1119,6 +1362,37 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.SupportingPartiesResponse": {
+            "type": "object",
+            "properties": {
+                "parties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.SupportingPartyResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "response.SupportingPartyResponse": {
+            "type": "object",
+            "properties": {
+                "election_pair_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "party": {
+                    "$ref": "#/definitions/response.PartyResponse"
+                },
+                "party_id": {
                     "type": "string"
                 }
             }

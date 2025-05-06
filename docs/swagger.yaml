@@ -17,11 +17,25 @@ definitions:
       message:
         type: string
     type: object
+  request.AddSupportingPartyRequest:
+    properties:
+      election_pair_id:
+        type: string
+      party_id:
+        type: string
+    type: object
   request.ElectionPairActivationRequest:
     properties:
       id:
         type: string
       signed_transaction:
+        type: string
+    type: object
+  request.RemoveSupportingPartyRequest:
+    properties:
+      election_pair_id:
+        type: string
+      party_id:
         type: string
     type: object
   response.CandidateInfoResponse:
@@ -115,6 +129,26 @@ definitions:
       logo_path:
         type: string
       name:
+        type: string
+    type: object
+  response.SupportingPartiesResponse:
+    properties:
+      parties:
+        items:
+          $ref: '#/definitions/response.SupportingPartyResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  response.SupportingPartyResponse:
+    properties:
+      election_pair_id:
+        type: string
+      id:
+        type: string
+      party:
+        $ref: '#/definitions/response.PartyResponse'
+      party_id:
         type: string
     type: object
   response.WorkHistoryResponse:
@@ -396,6 +430,44 @@ paths:
       summary: Election Detail
       tags:
       - Election-Detail
+  /v1/election/pairs/{pairID}/supporting-parties:
+    get:
+      consumes:
+      - application/json
+      description: Get all supporting parties for an election pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: pairID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.SupportingPartiesResponse'
+              type: object
+      summary: Get Supporting Parties
+      tags:
+      - Supporting-Party
   /v1/election/pairs/detail:
     post:
       consumes:
@@ -538,6 +610,78 @@ paths:
       summary: Election
       tags:
       - Election
+  /v1/election/pairs/supporting-party:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a political party from supporting an election pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Remove Supporting Party Request
+        in: body
+        name: supportingParty
+        required: true
+        schema:
+          $ref: '#/definitions/request.RemoveSupportingPartyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.jsonResponse'
+      summary: Remove Supporting Party
+      tags:
+      - Supporting-Party
+    post:
+      consumes:
+      - application/json
+      description: Add a political party as a supporting party for an election pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Add Supporting Party Request
+        in: body
+        name: supportingParty
+        required: true
+        schema:
+          $ref: '#/definitions/request.AddSupportingPartyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.SupportingPartyResponse'
+              type: object
+      summary: Add Supporting Party
+      tags:
+      - Supporting-Party
   /v1/party:
     get:
       consumes:
@@ -643,6 +787,36 @@ paths:
       summary: Get Party
       tags:
       - Party
+  /v1/party/{id}/photo:
+    get:
+      description: Get Party Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: Party Photo
+      tags:
+      - Party-Images
   /v1/party/register:
     post:
       consumes:

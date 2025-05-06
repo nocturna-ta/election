@@ -10,6 +10,8 @@ import (
 	"github.com/nocturna-ta/election/internal/usecases/response"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
+	"github.com/nocturna-ta/golib/http"
+	"github.com/nocturna-ta/golib/http/filehandler"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
 	"github.com/nocturna-ta/golib/tracing"
@@ -245,4 +247,39 @@ func (m *Module) DeleteParty(ctx context.Context, id string) error {
 		return err
 	}
 	return nil
+}
+
+func (m *Module) GetPartyPhoto(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "PartyUseCases.GetPartyPhoto")
+	defer span.End()
+
+	party, err := m.partyRepo.GetPartyByID(ctx, id)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "party not found",
+			Code:    404,
+			Type:    response2.ErrNotFound,
+			Cause:   err,
+		}
+	}
+
+	if party.LogoPath == "" {
+		return nil, "", &custerr.ErrChain{
+			Message: "no logo available for this party",
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	file, contentType, err := filehandler.GetFileFromPath(ctx, party.LogoPath, filehandler.DisplayModeInline)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "failed to retrieve logo",
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+			Cause:   err,
+		}
+	}
+
+	return file, contentType, nil
 }

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/nocturna-ta/election/internal/infrastructures/cutresp"
 	"github.com/nocturna-ta/election/pkg/utils"
 	"github.com/nocturna-ta/golib/custerr"
@@ -215,4 +216,37 @@ func (api *API) GetAllParties(ctx context.Context, req *router.Request) (*rest.J
 	}
 
 	return rest.NewJSONResponse().SetData(res), nil
+}
+
+// GetPartyPhoto godoc
+// @Summary    Party Photo
+// @Description Get Party Photo
+// @Tags        Party-Images
+// @Param X-User-Id header string false "User"
+// @Param X-Address-Id header string false "Address"
+// @Param X-Role header string false "Role"
+// @Param       id path string true "Party Pair ID"
+// @Produce     image/jpeg
+// @Produce     image/png
+// @Success     200
+// @Router      /v1/party/{id}/photo [get]
+func (api *API) GetPartyPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetPartyPhoto")
+	defer span.End()
+
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid Party Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	file, contentType, err := api.partyUc.GetPartyPhoto(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
 }

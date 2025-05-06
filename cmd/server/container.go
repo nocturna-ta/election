@@ -8,6 +8,7 @@ import (
 	"github.com/nocturna-ta/election/internal/usecases"
 	"github.com/nocturna-ta/election/internal/usecases/election"
 	"github.com/nocturna-ta/election/internal/usecases/party"
+	"github.com/nocturna-ta/election/internal/usecases/supporting_party"
 	"github.com/nocturna-ta/golib/database/sql"
 	"github.com/nocturna-ta/golib/ethereum"
 	"github.com/nocturna-ta/golib/event"
@@ -17,9 +18,10 @@ import (
 )
 
 type container struct {
-	Cfg        config.MainConfig
-	ElectionUc usecases.ElectionUseCases
-	PartyUc    usecases.PartyUseCases
+	Cfg               config.MainConfig
+	ElectionUc        usecases.ElectionUseCases
+	PartyUc           usecases.PartyUseCases
+	SupportingPartyUc usecases.SupportingPartyUseCases
 }
 
 type options struct {
@@ -37,6 +39,10 @@ func newContainer(opts *options) *container {
 	})
 
 	partyRepo := dao.NewPartyRepository(&dao.OptsPartyRepository{
+		DB: opts.DB,
+	})
+
+	supportingRepo := dao.NewSupportingPartyRepository(&dao.OptsSupportingPartyRepository{
 		DB: opts.DB,
 	})
 
@@ -60,10 +66,18 @@ func newContainer(opts *options) *container {
 		TxMgr:     txMgr,
 	})
 
+	supportingPartyUc := supporting_party.New(&supporting_party.Opts{
+		SupportingPartyRepo: supportingRepo,
+		PartyRepo:           partyRepo,
+		ElectionRepo:        electionRepo,
+		TxMgr:               txMgr,
+	})
+
 	return &container{
-		Cfg:        *opts.Cfg,
-		ElectionUc: electionUc,
-		PartyUc:    partyUc,
+		Cfg:               *opts.Cfg,
+		ElectionUc:        electionUc,
+		PartyUc:           partyUc,
+		SupportingPartyUc: supportingPartyUc,
 	}
 
 }

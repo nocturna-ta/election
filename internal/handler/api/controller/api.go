@@ -9,40 +9,43 @@ import (
 )
 
 type API struct {
-	prefix         string
-	port           uint
-	readTimeout    time.Duration
-	writeTimeout   time.Duration
-	requestTimeout time.Duration
-	enableSwagger  bool
-	corsConfig     *router.CorsConfig
-	electionUc     usecases.ElectionUseCases
-	partyUc        usecases.PartyUseCases
+	prefix            string
+	port              uint
+	readTimeout       time.Duration
+	writeTimeout      time.Duration
+	requestTimeout    time.Duration
+	enableSwagger     bool
+	corsConfig        *router.CorsConfig
+	electionUc        usecases.ElectionUseCases
+	partyUc           usecases.PartyUseCases
+	supportingPartyUc usecases.SupportingPartyUseCases
 }
 
 type Options struct {
-	Prefix         string
-	Port           uint
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	RequestTimeout time.Duration
-	EnableSwagger  bool
-	CorsConfig     *router.CorsConfig
-	ElectionUc     usecases.ElectionUseCases
-	PartyUc        usecases.PartyUseCases
+	Prefix            string
+	Port              uint
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	RequestTimeout    time.Duration
+	EnableSwagger     bool
+	CorsConfig        *router.CorsConfig
+	ElectionUc        usecases.ElectionUseCases
+	PartyUc           usecases.PartyUseCases
+	SupportingPartyUc usecases.SupportingPartyUseCases
 }
 
 func New(opts *Options) *API {
 	return &API{
-		prefix:         opts.Prefix,
-		port:           opts.Port,
-		readTimeout:    opts.ReadTimeout,
-		writeTimeout:   opts.WriteTimeout,
-		requestTimeout: opts.RequestTimeout,
-		enableSwagger:  opts.EnableSwagger,
-		corsConfig:     opts.CorsConfig,
-		electionUc:     opts.ElectionUc,
-		partyUc:        opts.PartyUc,
+		prefix:            opts.Prefix,
+		port:              opts.Port,
+		readTimeout:       opts.ReadTimeout,
+		writeTimeout:      opts.WriteTimeout,
+		requestTimeout:    opts.RequestTimeout,
+		enableSwagger:     opts.EnableSwagger,
+		corsConfig:        opts.CorsConfig,
+		electionUc:        opts.ElectionUc,
+		partyUc:           opts.PartyUc,
+		supportingPartyUc: opts.SupportingPartyUc,
 	}
 }
 
@@ -85,6 +88,10 @@ func (api *API) RegisterRoute() *router.FastRouter {
 				pairs.POST("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
 				pairs.GET("/:pairID/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
 				//pairs.GET("/:id/full", api.GetElectionPairFull, router.MustAuthorized(false))
+
+				pairs.POST("/supporting-party", api.AddSupportingParty, router.MustAuthorized(false))
+				pairs.DELETE("/supporting-party", api.RemoveSupportingParty, router.MustAuthorized(false))
+				pairs.GET("/:pairID/supporting-parties", api.GetSupportingPartiesByPairID, router.MustAuthorized(false))
 			})
 		})
 
@@ -93,6 +100,7 @@ func (api *API) RegisterRoute() *router.FastRouter {
 			party.PUT("/update", api.UpdateParty, router.MustAuthorized(false))
 			party.GET("/:id", api.GetPartyByID, router.MustAuthorized(false))
 			party.DELETE("/:id", api.DeleteParty, router.MustAuthorized(false))
+			party.ATTACHMENT("/:id/photo", api.GetPartyPhoto, router.MustAuthorized(false))
 			party.GET("", api.GetAllParties, router.MustAuthorized(false))
 		})
 	})

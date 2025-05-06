@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/nocturna-ta/election/internal/domain/model"
 	"github.com/nocturna-ta/election/internal/domain/repository"
 	"github.com/nocturna-ta/golib/database/sql"
@@ -123,10 +124,22 @@ func (p *PartyRepository) InsertParty(ctx context.Context, party *model.Party) e
 	}
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			switch pqErr.Code {
+			case "23505":
+				log.WithFields(log.Fields{
+					"error": err,
+					"party": party,
+				}).ErrorWithCtx(ctx, "[SupportingParty.ddSupportingParty] duplicate key value violates unique constraint")
+				return ErrDuplicate
+			}
+		}
+
 		log.WithFields(log.Fields{
-			"party": party,
+			"party": *party,
 			"error": err,
-		}).ErrorWithCtx(ctx, "failed to insert party")
+		}).ErrorWithCtx(ctx, "[PartyRepository.InsertParty] failed to insert party")
 		return err
 	}
 
