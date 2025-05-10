@@ -12,14 +12,14 @@ type Module struct {
 	partyRepo repository.PartyRepository
 	txMgr     txmanager.TxManager
 	publisher event.MessagePublisher
-	topics    config.KafkaConfig
+	topics    config.KafkaTopics
 }
 
 type Opts struct {
 	PartyRepo repository.PartyRepository
 	TxMgr     txmanager.TxManager
 	Publisher event.MessagePublisher
-	Topics    config.KafkaConfig
+	Topics    config.KafkaTopics
 }
 
 func New(opts *Opts) usecases.PartyUseCases {

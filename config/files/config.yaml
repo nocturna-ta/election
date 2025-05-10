@@ -23,20 +23,16 @@ Kafka:
     MaxAttempt: 5
     Idempotent: true
   Topics:
-    MasterDataUser:
-      Value: "ums.masterdata-users"
+    MasterDataElection:
+      Value: "election.masterdata-election"
       ErrorHandler: "Phase1"
       WithBackOff: true
-    MasterDataVoter:
-      Value: "ums.masterdata-voters"
+    MasterDataParty:
+      Value: "election.masterdata-party"
       ErrorHandler: "Phase1"
       WithBackOff: true
-    MasterDataKpuKota:
-      Value: "ums.masterdata-kpu-kota"
-      ErrorHandler: "Phase1"
-      WithBackOff: true
-    MasterDataKpuProvinsi:
-      Value: "ums.masterdata-kpu-provinsi"
+    MasterDataSupportingParty:
+      Value: "election.masterdata-supporting-party"
       ErrorHandler: "Phase1"
       WithBackOff: true
 

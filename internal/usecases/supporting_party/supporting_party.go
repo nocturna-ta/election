@@ -8,6 +8,7 @@ import (
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
+	"github.com/nocturna-ta/election/pkg/constants"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/log"
 	response2 "github.com/nocturna-ta/golib/response"
@@ -77,30 +78,35 @@ func (m *Module) AddSupportingParty(ctx context.Context, req *request.AddSupport
 	}
 
 	transaction := func(txCtx context.Context) (any, error) {
-		supportingParty, err = model.ConstructSupportingParty(req)
+		supportingParty, errTx := model.ConstructSupportingParty(req)
 		if err != nil {
 			return nil, err
 		}
 
-		err = m.supportingPartyRepo.AddSupportingParty(txCtx, supportingParty)
-		if err != nil {
-			if errors.Is(err, dao.ErrDuplicate) {
+		errTx = m.supportingPartyRepo.AddSupportingParty(txCtx, supportingParty)
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrDuplicate) {
 				return nil, &custerr.ErrChain{
 					Message: "Supporting party already exists",
 					Code:    400,
 					Type:    response2.ErrBadRequest,
-					Cause:   err,
+					Cause:   errTx,
 				}
 			}
 
 			log.WithFields(log.Fields{
-				"error":           err,
+				"error":           errTx,
 				"supportingParty": *supportingParty,
 			}).ErrorWithCtx(ctx, "[SupportingPartyUseCases.AddSupportingParty] failed to add supporting party")
-			return nil, err
+			return nil, errTx
 		}
 
-		//publisher
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataSupportingParty.Value, supportingParty.ID.String(), supportingParty.ToMessageModel(), map[string]any{
+			constants.MetaDataOperation: constants.Create,
+		})
+		if errTx != nil {
+			return nil, errTx
+		}
 		return nil, nil
 	}
 
@@ -121,21 +127,11 @@ func (m *Module) AddSupportingParty(ctx context.Context, req *request.AddSupport
 	}, nil
 }
 
-func (m *Module) GetSupportingPartiesByPairID(ctx context.Context, pairID string) (*response.SupportingPartiesResponse, error) {
+func (m *Module) GetSupportingPartiesByPairID(ctx context.Context, pairID uuid.UUID) (*response.SupportingPartiesResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SupportingPartyUseCases.GetSupportingPartiesByPairID")
 	defer span.End()
 
-	id, err := uuid.Parse(pairID)
-	if err != nil {
-		return nil, &custerr.ErrChain{
-			Message: "Invalid election pair ID format",
-			Cause:   err,
-			Code:    400,
-			Type:    response2.ErrBadRequest,
-		}
-	}
-
-	_, err = m.electionRepo.GetElectionPairByID(ctx, id)
+	_, err := m.electionRepo.GetElectionPairByID(ctx, pairID)
 	if err != nil {
 		if errors.Is(err, dao.ErrNoResult) {
 			return nil, &custerr.ErrChain{
@@ -152,7 +148,7 @@ func (m *Module) GetSupportingPartiesByPairID(ctx context.Context, pairID string
 		return nil, err
 	}
 
-	supportingParties, err := m.supportingPartyRepo.GetSupportingPartiesByPairID(ctx, id)
+	supportingParties, err := m.supportingPartyRepo.GetSupportingPartiesByPairID(ctx, pairID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"pairID": pairID,
@@ -240,17 +236,19 @@ func (m *Module) RemoveSupportingParty(ctx context.Context, req *request.RemoveS
 	}
 
 	transaction := func(txCtx context.Context) (any, error) {
-		err := m.supportingPartyRepo.RemoveSupportingParty(txCtx, pairID, partyID)
-		if err != nil {
+		errTx := m.supportingPartyRepo.RemoveSupportingParty(txCtx, pairID, partyID)
+		if errTx != nil {
 			log.WithFields(log.Fields{
 				"pairID":  req.ElectionPairID,
 				"partyID": req.PartyID,
-				"error":   err,
+				"error":   errTx,
 			}).ErrorWithCtx(txCtx, "[ElectionUseCases.RemoveSupportingParty] failed to remove supporting party")
-			return nil, err
+			return nil, errTx
 		}
 
-		//publisher
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataSupportingParty.Value, partyID.String(), nil, map[string]any{
+			constants.MetaDataOperation: constants.Delete,
+		})
 
 		return nil, nil
 	}

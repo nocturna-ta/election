@@ -7,11 +7,11 @@ import (
 )
 
 type ElectionRepository interface {
-	InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) error
+	InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) (string, error)
 	GetElectionPairByID(ctx context.Context, id uuid.UUID) (*model.ElectionPair, error)
 	GetElectionPairByNo(ctx context.Context, no string) (*model.ElectionPair, error)
 	GetAllElectionPairs(ctx context.Context) ([]model.ElectionPair, error)
-	ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) error
+	ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) (string, error)
 
 	UpdateElectionPairPhoto(ctx context.Context, id uuid.UUID, photoPath string) error
 	UpdatePresidentPhoto(ctx context.Context, id uuid.UUID, photoPath string) error

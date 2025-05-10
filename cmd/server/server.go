@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/election/ethereum"
 	"github.com/nocturna-ta/election/internal/handler/api"
+	"github.com/nocturna-ta/election/internal/infrastructures/kafka"
 	"github.com/nocturna-ta/golib/database/sql"
 	"github.com/nocturna-ta/golib/log"
 	"github.com/spf13/cobra"
@@ -46,10 +48,17 @@ func run(cmd *cobra.Command, args []string) error {
 
 	defer client.Close()
 
+	publisher, err := kafka.NewPublisher(context.Background(), cfg.Kafka.Producer)
+	if err != nil {
+		log.Fatal("Failed to instantiate kafka producer")
+		return err
+	}
+
 	appContainer := newContainer(&options{
-		Cfg:    cfg,
-		DB:     database,
-		Client: client,
+		Cfg:       cfg,
+		DB:        database,
+		Client:    client,
+		Publisher: publisher,
 	})
 
 	server := api.New(&api.Options{

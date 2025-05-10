@@ -58,3 +58,9 @@ type ElectionPairListResponse struct {
 	Pairs []ElectionPairResponse `json:"pairs"`
 	Total int                    `json:"total"`
 }
+
+type ElectionPairFullResponse struct {
+	ElectionPairResponse
+	Detail            ElectionPairDetailResponse `json:"detail,omitempty"`
+	SupportingParties []SupportingPartyResponse  `json:"supporting_parties,omitempty"`
+}

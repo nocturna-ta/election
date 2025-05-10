@@ -28,7 +28,7 @@ type options struct {
 	Cfg       *config.MainConfig
 	DB        *sql.Store
 	Client    ethereum.Client
-	Publisher event.Publisher
+	Publisher event.MessagePublisher
 }
 
 func newContainer(opts *options) *container {
@@ -56,14 +56,11 @@ func newContainer(opts *options) *container {
 		log.Fatal("Failed to instantiate transaction manager ")
 	}
 
-	electionUc := election.New(&election.Opts{
-		ElectionRepo: electionRepo,
-		TxMgr:        txMgr,
-	})
-
 	partyUc := party.New(&party.Opts{
 		PartyRepo: partyRepo,
 		TxMgr:     txMgr,
+		Publisher: opts.Publisher,
+		Topics:    opts.Cfg.Kafka.Topics,
 	})
 
 	supportingPartyUc := supporting_party.New(&supporting_party.Opts{
@@ -71,6 +68,16 @@ func newContainer(opts *options) *container {
 		PartyRepo:           partyRepo,
 		ElectionRepo:        electionRepo,
 		TxMgr:               txMgr,
+		Publisher:           opts.Publisher,
+		Topics:              opts.Cfg.Kafka.Topics,
+	})
+
+	electionUc := election.New(&election.Opts{
+		ElectionRepo:      electionRepo,
+		SupportingPartyUC: supportingPartyUc,
+		TxMgr:             txMgr,
+		Publisher:         opts.Publisher,
+		Topics:            opts.Cfg.Kafka.Topics,
 	})
 
 	return &container{

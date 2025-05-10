@@ -8,6 +8,7 @@ import (
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
+	"github.com/nocturna-ta/election/pkg/constants"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/http"
@@ -58,7 +59,13 @@ func (m *Module) RegisterParty(ctx context.Context, req *request.PartyRegisterRe
 			return nil, errTx
 		}
 
-		//publisher
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataParty.Value, party.ID.String(), party.ToMessageModel(), map[string]any{
+			constants.MetaDataOperation: constants.Create,
+		})
+
+		if errTx != nil {
+			return nil, errTx
+		}
 		return nil, nil
 	}
 	_, err := m.txMgr.Execute(ctx, transaction, nil)
@@ -136,13 +143,13 @@ func (m *Module) UpdateParty(ctx context.Context, req *request.PartyUpdateReques
 	)
 
 	transaction := func(txCtx context.Context) (any, error) {
-		existing, err := m.partyRepo.GetPartyByID(txCtx, partyID)
-		if err != nil {
+		existing, errTx := m.partyRepo.GetPartyByID(txCtx, partyID)
+		if errTx != nil {
 			log.WithFields(log.Fields{
 				"id":    req.ID,
-				"error": err,
+				"error": errTx,
 			}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to get party by id")
-			return nil, err
+			return nil, errTx
 		}
 
 		oldLogoPath := existing.LogoPath
@@ -153,32 +160,36 @@ func (m *Module) UpdateParty(ctx context.Context, req *request.PartyUpdateReques
 			fileConfig.SetAllowedImageExtension()
 			fileConfig.EntityType = "party"
 
-			logoPath, err := fileutils.StoreFile(txCtx, req.LogoFile, req.LogoName, fileConfig)
-			if err != nil {
+			logoPath, errTx := fileutils.StoreFile(txCtx, req.LogoFile, req.LogoName, fileConfig)
+			if errTx != nil {
 				log.WithFields(log.Fields{
-					"error": err,
+					"error": errTx,
 				}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to store logo file")
-				return nil, err
+				return nil, errTx
 			}
 
 			existing.LogoPath = logoPath
 		}
 
-		updatedParty, err = m.partyRepo.UpdateParty(txCtx, existing)
-		if err != nil {
+		updatedParty, errTx = m.partyRepo.UpdateParty(txCtx, existing)
+		if errTx != nil {
 			if req.LogoFile != nil && existing.LogoPath != "" {
 				_ = fileutils.DeleteFile(txCtx, existing.LogoPath)
 			}
 			log.WithFields(log.Fields{
 				"id":    req.ID,
-				"error": err,
+				"error": errTx,
 			}).ErrorWithCtx(txCtx, "[PartyUseCases.UpdateParty] failed to update party")
-			return nil, err
+			return nil, errTx
 		}
 
 		if req.LogoFile != nil && oldLogoPath != "" && oldLogoPath != existing.LogoPath {
 			_ = fileutils.DeleteFile(txCtx, oldLogoPath)
 		}
+
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataParty.Value, updatedParty.ID.String(), updatedParty.ToMessageModel(), map[string]any{
+			constants.MetaDataOperation: constants.Update,
+		})
 
 		return nil, nil
 	}

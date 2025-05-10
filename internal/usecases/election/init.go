@@ -9,24 +9,27 @@ import (
 )
 
 type Module struct {
-	electionRepo repository.ElectionRepository
-	txMgr        txmanager.TxManager
-	publisher    event.MessagePublisher
-	topics       config.KafkaTopics
+	electionRepo      repository.ElectionRepository
+	supportingPartyUC usecases.SupportingPartyUseCases
+	txMgr             txmanager.TxManager
+	publisher         event.MessagePublisher
+	topics            config.KafkaTopics
 }
 
 type Opts struct {
-	ElectionRepo repository.ElectionRepository
-	TxMgr        txmanager.TxManager
-	Publisher    event.MessagePublisher
-	Topics       config.KafkaTopics
+	ElectionRepo      repository.ElectionRepository
+	SupportingPartyUC usecases.SupportingPartyUseCases
+	TxMgr             txmanager.TxManager
+	Publisher         event.MessagePublisher
+	Topics            config.KafkaTopics
 }
 
 func New(opts *Opts) usecases.ElectionUseCases {
 	return &Module{
-		electionRepo: opts.ElectionRepo,
-		txMgr:        opts.TxMgr,
-		publisher:    opts.Publisher,
-		topics:       opts.Topics,
+		electionRepo:      opts.ElectionRepo,
+		supportingPartyUC: opts.SupportingPartyUC,
+		txMgr:             opts.TxMgr,
+		publisher:         opts.Publisher,
+		topics:            opts.Topics,
 	}
 }

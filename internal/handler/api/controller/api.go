@@ -78,16 +78,16 @@ func (api *API) RegisterRoute() *router.FastRouter {
 				pairs.Group("/:id", func(id *router.FastRouter) {
 					id.GET("", api.GetElectionPairByID, router.MustAuthorized(false))
 					id.ATTACHMENT("/photo", api.GetElectionPairPhoto, router.MustAuthorized(false))
-					id.ATTACHMENT("photo/president", api.GetPresidentPhoto, router.MustAuthorized(false))
+					id.ATTACHMENT("/photo/president", api.GetPresidentPhoto, router.MustAuthorized(false))
 					id.ATTACHMENT("/photo/vice-president", api.GetVicePresidentPhoto, router.MustAuthorized(false))
 					id.PUT("/activate", api.ActivateElectionPair, router.MustAuthorized(false))
+					id.GET("/full", api.GetElectionPairFull, router.MustAuthorized(false))
 				})
 				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
 				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))
 				pairs.POST("/register", api.RegisterElectionPair, router.MustAuthorized(false))
 				pairs.POST("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
 				pairs.GET("/:pairID/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
-				//pairs.GET("/:id/full", api.GetElectionPairFull, router.MustAuthorized(false))
 
 				pairs.POST("/supporting-party", api.AddSupportingParty, router.MustAuthorized(false))
 				pairs.DELETE("/supporting-party", api.RemoveSupportingParty, router.MustAuthorized(false))

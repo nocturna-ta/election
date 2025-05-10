@@ -55,8 +55,6 @@ func ParseRegistrationRequest(form *multipart.Form, files map[string]UploadedFil
 	return &regReq, nil
 }
 
-// ParseDetailRequest parses raw request body into ElectionPairDetailRequest
-// This is in a separate file to avoid circular dependencies
 func ParseUpsertDetailRequest(form *multipart.Form, files map[string]UploadedFile, workProgramPhotos map[string]UploadedFile) (*request.ElectionPairDetailRequest, error) {
 	programValues := form.Value["detail"]
 	if len(programValues) == 0 {

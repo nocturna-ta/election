@@ -554,6 +554,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/{id}/full": {
+            "get": {
+                "description": "Get Full Election Pair Data with Details and Supporting Parties",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairFullResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{id}/photo": {
             "get": {
                 "description": "Get Election Pair Photo",
@@ -1309,6 +1353,41 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/response.WorkProgramResponse"
                     }
+                }
+            }
+        },
+        "response.ElectionPairFullResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "$ref": "#/definitions/response.ElectionPairDetailResponse"
+                },
+                "election_no": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "pair_photo_path": {
+                    "type": "string"
+                },
+                "president": {
+                    "$ref": "#/definitions/response.CandidateInfoResponse"
+                },
+                "supporting_parties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/response.SupportingPartyResponse"
+                    }
+                },
+                "vice_president": {
+                    "$ref": "#/definitions/response.CandidateInfoResponse"
+                },
+                "vote_count": {
+                    "type": "integer"
                 }
             }
         },

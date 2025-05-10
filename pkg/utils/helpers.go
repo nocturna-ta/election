@@ -34,11 +34,6 @@ type UploadedFile struct {
 	Size             int64
 }
 
-// Generic registration request interface to avoid direct import of request package
-type RegistrationRequest interface {
-	Validate() error
-}
-
 func ProcessFileUploads(ctx context.Context, form *multipart.Form, configs []FileUploadConfig) (map[string]UploadedFile, error) {
 	result := make(map[string]UploadedFile)
 

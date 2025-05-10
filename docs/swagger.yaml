@@ -96,6 +96,29 @@ definitions:
           $ref: '#/definitions/response.WorkProgramResponse'
         type: array
     type: object
+  response.ElectionPairFullResponse:
+    properties:
+      detail:
+        $ref: '#/definitions/response.ElectionPairDetailResponse'
+      election_no:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      pair_photo_path:
+        type: string
+      president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      supporting_parties:
+        items:
+          $ref: '#/definitions/response.SupportingPartyResponse'
+        type: array
+      vice_president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      vote_count:
+        type: integer
+    type: object
   response.ElectionPairListResponse:
     properties:
       pairs:
@@ -298,6 +321,32 @@ paths:
             - properties:
                 data:
                   $ref: '#/definitions/response.ElectionPairActivationResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/pairs/{id}/full:
+    get:
+      consumes:
+      - application/json
+      description: Get Full Election Pair Data with Details and Supporting Parties
+      parameters:
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairFullResponse'
               type: object
       summary: Election
       tags:

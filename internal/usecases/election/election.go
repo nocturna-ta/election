@@ -8,6 +8,7 @@ import (
 	"github.com/nocturna-ta/election/internal/interfaces/dao"
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/election/internal/usecases/response"
+	"github.com/nocturna-ta/election/pkg/constants"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/http"
@@ -24,12 +25,8 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 	var (
 		electionPair *model.ElectionPair
 		err          error
+		txHash       string
 	)
-
-	//reqCtx, err := libCtx.GetRequestContext(ctx)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	transaction := func(txCtx context.Context) (any, error) {
 		electionPair = model.ConstructElectionPair(req)
@@ -48,14 +45,14 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		fileConfigPairPhoto.SetAllowedImageExtension()
 		fileConfigPairPhoto.EntityType = "election_pair"
 
-		photoPathPair, err := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfigPairPhoto)
-		if err != nil {
+		photoPathPair, errTx := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfigPairPhoto)
+		if errTx != nil {
 			log.WithFields(log.Fields{
-				"error": err,
+				"error": errTx,
 			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store pair photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store pair photo",
-				Cause:   err,
+				Cause:   errTx,
 				Code:    500,
 				Type:    response2.ErrInternalServerError,
 			}
@@ -65,14 +62,14 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		fileConfigPresident.SetAllowedImageExtension()
 		fileConfigPresident.EntityType = "election_pair"
 
-		presidentPhoto, err := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfigPresident)
-		if err != nil {
+		presidentPhoto, errTx := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfigPresident)
+		if errTx != nil {
 			log.WithFields(log.Fields{
-				"error": err,
+				"error": errTx,
 			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store president photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store president photo",
-				Cause:   err,
+				Cause:   errTx,
 				Code:    500,
 				Type:    response2.ErrInternalServerError,
 			}
@@ -82,14 +79,14 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		fileConfigVicePresident.SetAllowedImageExtension()
 		fileConfigVicePresident.EntityType = "election_pair"
 
-		vicePresidentPhoto, err := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfigVicePresident)
-		if err != nil {
+		vicePresidentPhoto, errTx := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfigVicePresident)
+		if errTx != nil {
 			log.WithFields(log.Fields{
-				"error": err,
+				"error": errTx,
 			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store vice president photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store vice president photo",
-				Cause:   err,
+				Cause:   errTx,
 				Code:    500,
 				Type:    response2.ErrInternalServerError,
 			}
@@ -99,7 +96,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		electionPair.President.PhotoPath = presidentPhoto
 		electionPair.VicePresident.PhotoPath = vicePresidentPhoto
 
-		if errTx := m.electionRepo.InsertElectionPair(txCtx, electionPair, req.SignedTransaction); err != nil {
+		if txHash, errTx = m.electionRepo.InsertElectionPair(txCtx, electionPair, req.SignedTransaction); err != nil {
 			if errors.Is(errTx, dao.ErrDuplicate) {
 				_ = fileutils.DeleteFile(txCtx, photoPathPair)
 				_ = fileutils.DeleteFile(txCtx, presidentPhoto)
@@ -114,7 +111,9 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 			return nil, errTx
 		}
 
-		//publisher
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElection.Value, electionPair.ID.String(), electionPair.ToMessageModel(txHash), map[string]any{
+			constants.MetaDataOperation: constants.Create,
+		})
 
 		return nil, nil
 	}
@@ -191,21 +190,11 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 	}, err
 }
 
-func (m *Module) GetElectionPairByID(ctx context.Context, id string) (*response.ElectionPairResponse, error) {
+func (m *Module) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*response.ElectionPairResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetElectionPairByID")
 	defer span.End()
 
-	pairID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, &custerr.ErrChain{
-			Message: "Invalid ID format",
-			Cause:   err,
-			Code:    400,
-			Type:    response2.ErrBadRequest,
-		}
-	}
-
-	electionPair, err := m.electionRepo.GetElectionPairByID(ctx, pairID)
+	electionPair, err := m.electionRepo.GetElectionPairByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, dao.ErrNoResult) {
 			return nil, &custerr.ErrChain{
@@ -479,23 +468,62 @@ func (m *Module) ActivateElectionPair(ctx context.Context, req *request.Election
 		}
 	}
 
-	err = m.electionRepo.ActivateElectionPair(ctx, pairID, req.SignedTransaction)
-	if err != nil {
-		if errors.Is(err, dao.ErrNoResult) {
+	transaction := func(txCtx context.Context) (any, error) {
+		electionPair, errTx := m.electionRepo.GetElectionPairByID(txCtx, pairID)
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrNoResult) {
+				return nil, &custerr.ErrChain{
+					Message: "Election Pair not found",
+					Cause:   errTx,
+					Code:    404,
+					Type:    response2.ErrNotFound,
+				}
+			}
+			return nil, errTx
+		}
+
+		if electionPair.IsActive {
 			return nil, &custerr.ErrChain{
-				Message: "Election Pair not found",
-				Cause:   err,
-				Code:    404,
-				Type:    response2.ErrNotFound,
+				Message: "Election Pair already active",
+				Cause:   errTx,
+				Code:    400,
+				Type:    response2.ErrBadRequest,
 			}
 		}
-		log.WithFields(log.Fields{
-			"error": err,
-			"id":    req.ID,
-		}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to activate election pair")
-		return nil, err
+
+		txHash, errTx := m.electionRepo.ActivateElectionPair(txCtx, electionPair.ID, req.SignedTransaction)
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrNoResult) {
+				return nil, &custerr.ErrChain{
+					Message: "Election Pair not found",
+					Cause:   errTx,
+					Code:    400,
+					Type:    response2.ErrBadRequest,
+				}
+			}
+			log.WithFields(log.Fields{
+				"error": errTx,
+				"id":    req.ID,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to activate election pair")
+			return nil, errTx
+		}
+
+		message := model.CreateElectionActivationMessage(electionPair.ID.String(), electionPair.IsActive, txHash)
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElection.Value, electionPair.ID.String(), message, map[string]any{
+			constants.MetaDataOperation: constants.Update,
+		})
+
+		if errTx != nil {
+			return nil, errTx
+		}
+
+		return nil, nil
 	}
 
+	_, err = m.txMgr.Execute(ctx, transaction, nil)
+	if err != nil {
+		return nil, err
+	}
 	return &response.ElectionPairActivationResponse{
 		ID:       req.ID,
 		IsActive: true,
@@ -668,21 +696,11 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 	}, nil
 }
 
-func (m *Module) GetElectionPairDetail(ctx context.Context, pairID string) (*response.ElectionPairDetailResponse, error) {
+func (m *Module) GetElectionPairDetail(ctx context.Context, pairID uuid.UUID) (*response.ElectionPairDetailResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetElectionPairDetail")
 	defer span.End()
 
-	id, err := uuid.Parse(pairID)
-	if err != nil {
-		return nil, &custerr.ErrChain{
-			Message: "Invalid ID format",
-			Cause:   err,
-			Code:    400,
-			Type:    response2.ErrBadRequest,
-		}
-	}
-
-	detail, err := m.electionRepo.GetPairDetailByPairID(ctx, id)
+	detail, err := m.electionRepo.GetPairDetailByPairID(ctx, pairID)
 	if err != nil {
 		if errors.Is(err, dao.ErrNoResult) {
 			return nil, &custerr.ErrChain{
@@ -741,7 +759,7 @@ func (m *Module) GetElectionPairPhoto(ctx context.Context, id uuid.UUID) (*http.
 		}
 	}
 
-	file, contentType, err := filehandler.GetFileFromPath(ctx, election.PairPhotoPath, filehandler.DisplayModeAttachment)
+	file, contentType, err := filehandler.GetFileFromPath(ctx, election.PairPhotoPath, filehandler.DisplayModeInline)
 	if err != nil {
 		return nil, "", &custerr.ErrChain{
 			Message: "Failed to get file",
@@ -822,4 +840,55 @@ func (m *Module) GetVicePresidentPhoto(ctx context.Context, id uuid.UUID) (*http
 	}
 
 	return file, contentType, nil
+}
+
+func (m *Module) GetElectionPairFull(ctx context.Context, id uuid.UUID) (*response.ElectionPairFullResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetElectionPairFull")
+	defer span.End()
+
+	pairResponse, err := m.GetElectionPairByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, dao.ErrNoResult) {
+			return nil, &custerr.ErrChain{
+				Message: "Election Pair not found",
+				Cause:   err,
+				Code:    404,
+				Type:    response2.ErrNotFound,
+			}
+		}
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id.String(),
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairFull] failed to get election pair by id")
+		return nil, err
+	}
+
+	fullResp := &response.ElectionPairFullResponse{
+		ElectionPairResponse: *pairResponse,
+	}
+
+	detailResp, err := m.GetElectionPairDetail(ctx, id)
+	if err == nil {
+		fullResp.Detail = *detailResp
+	} else if !errors.Is(err, dao.ErrNoResult) {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id.String(),
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairFull] failed to get election pair detail")
+		return nil, err
+	}
+
+	partyResponses, err := m.supportingPartyUC.GetSupportingPartiesByPairID(ctx, id)
+	if err == nil {
+		fullResp.SupportingParties = partyResponses.Parties
+	} else {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id.String(),
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairFull] failed to get supporting parties")
+		return nil, err
+	}
+
+	return fullResp, nil
+
 }

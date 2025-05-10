@@ -80,16 +80,18 @@ const (
 	updatePairDetail = `UPDATE election_pair_details SET %s WHERE TRUE %s`
 )
 
-func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) error {
+func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) (string, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.InsertElectionPair")
 	defer span.End()
+
+	var txHash string
 
 	presidentEducationJSON, err := json.Marshal(pair.President.EducationHistory)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president education history")
-		return err
+		return "", err
 	}
 
 	presidentWorkJSON, err := json.Marshal(pair.President.WorkExperience)
@@ -97,7 +99,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president work experience")
-		return err
+		return "", err
 	}
 
 	vicePresidentEducationJSON, err := json.Marshal(pair.VicePresident.EducationHistory)
@@ -105,7 +107,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
-		return err
+		return "", err
 	}
 
 	vicePresidentWorkJSON, err := json.Marshal(pair.VicePresident.WorkExperience)
@@ -113,7 +115,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
-		return err
+		return "", err
 	}
 
 	tx, err := utils2.StringToTx(signedTransaction)
@@ -121,7 +123,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert signed transaction")
-		return err
+		return "", err
 	}
 
 	sqlTrx := utils.GetSqlTx(ctx)
@@ -134,7 +136,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 			log.WithFields(log.Fields{
 				"error": err,
 			}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to begin transaction")
-			return err
+			return "", err
 		}
 		ownTransaction = true
 
@@ -189,17 +191,17 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 					"error": err,
 					"pair":  pair,
 				}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Duplicate election pair")
-				return ErrDuplicate
+				return "", ErrDuplicate
 			}
 		}
 		log.WithFields(log.Fields{
 			"error": err,
 			"pair":  pair,
 		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to insert election pair")
-		return err
+		return "", err
 	}
 
-	err = e.client.SendTransaction(ctx, tx)
+	txHash, err = e.client.SendTransaction(ctx, tx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -213,7 +215,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 				}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to rollback transaction")
 			}
 		}
-		return err
+		return "", err
 	}
 
 	if ownTransaction {
@@ -221,11 +223,11 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 			log.WithFields(log.Fields{
 				"error": err,
 			}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to commit transaction")
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return txHash, nil
 }
 
 func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*model.ElectionPair, error) {
@@ -438,21 +440,24 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 	return pairs, nil
 }
 
-func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) error {
+func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) (string, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.ActivateElectionPair")
 	defer span.End()
-	// Convert signed transaction to tx
+
 	tx, err := utils2.StringToTx(signedTransaction)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert signed transaction")
-		return err
+		return "", err
 	}
 
 	sqlTrx := utils.GetSqlTx(ctx)
 
-	var ownTransaction bool
+	var (
+		ownTransaction bool
+		txHash         string
+	)
 	if sqlTrx == nil {
 		var err error
 		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
@@ -460,7 +465,8 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 			log.WithFields(log.Fields{
 				"error": err,
 			}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to begin transaction")
-			return err
+			return "", err
+
 		}
 		ownTransaction = true
 
@@ -489,7 +495,7 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 			"error": err,
 			"id":    id,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to activate election pair")
-		return err
+		return "", err
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -498,14 +504,14 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 			"error": err,
 			"id":    id,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get rows affected")
-		return err
+		return "", err
 	}
 
 	if rowsAffected == 0 {
-		return ErrNoUpdateHappened
+		return "", ErrNoUpdateHappened
 	}
 
-	err = e.client.SendTransaction(ctx, tx)
+	txHash, err = e.client.SendTransaction(ctx, tx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -519,7 +525,7 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 				}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to rollback transaction")
 			}
 		}
-		return err
+		return "", err
 	}
 
 	if ownTransaction {
@@ -527,11 +533,11 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 			log.WithFields(log.Fields{
 				"error": err,
 			}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to commit transaction")
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return txHash, nil
 }
 
 func (e *ElectionRepository) UpsertPairDetail(ctx context.Context, detail *model.PairDetail) error {

@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/nocturna-ta/election/internal/infrastructures/cutresp"
 	"github.com/nocturna-ta/election/internal/usecases/request"
 	"github.com/nocturna-ta/golib/custerr"
@@ -72,10 +73,11 @@ func (api *API) GetSupportingPartiesByPairID(ctx context.Context, req *router.Re
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetSupportingPartiesByPairID")
 	defer span.End()
 
-	pairID := req.Params("pairID")
-	if pairID == "" {
+	pairID, err := uuid.Parse(req.Params("pairID"))
+	if err != nil {
 		return cutresp.CustomErrorResponse(&custerr.ErrChain{
-			Message: "Election pair ID is required",
+			Message: "Invalid election pair ID format",
+			Cause:   err,
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		})

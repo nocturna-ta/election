@@ -159,7 +159,14 @@ func (api *API) GetElectionPairByID(ctx context.Context, req *router.Request) (*
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairByID")
 	defer span.End()
 
-	id := req.Params("id")
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		})
+	}
 
 	res, err := api.electionUc.GetElectionPairByID(ctx, id)
 	if err != nil {
@@ -185,7 +192,14 @@ func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) 
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairDetail")
 	defer span.End()
 
-	pairID := req.Params("pairID")
+	pairID, err := uuid.Parse(req.Params("pairID"))
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		})
+	}
 
 	res, err := api.electionUc.GetElectionPairDetail(ctx, pairID)
 	if err != nil {
@@ -438,5 +452,34 @@ func (api *API) ActivateElectionPair(ctx context.Context, req *router.Request) (
 	}
 
 	return rest.NewJSONResponse().SetData(res), nil
+}
 
+// GetElectionPairFull godoc
+// @Summary 	Election
+// @Description	Get Full Election Pair Data with Details and Supporting Parties
+// @Tags		Election
+// @Accept		json
+// @Param 		id path string true "Election Pair ID"
+// @Produce		json
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairFullResponse}
+// @Router		/v1/election/pairs/{id}/full	[get]
+func (api *API) GetElectionPairFull(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairFull")
+	defer span.End()
+
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		})
+	}
+
+	res, err := api.electionUc.GetElectionPairFull(ctx, id)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	return rest.NewJSONResponse().SetData(res), nil
 }
