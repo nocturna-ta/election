@@ -49,7 +49,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		if errTx != nil {
 			log.WithFields(log.Fields{
 				"error": errTx,
-			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store pair photo")
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.RegisterElectionPair] failed to store pair photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store pair photo",
 				Cause:   errTx,
@@ -66,7 +66,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		if errTx != nil {
 			log.WithFields(log.Fields{
 				"error": errTx,
-			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store president photo")
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.RegisterElectionPair] failed to store president photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store president photo",
 				Cause:   errTx,
@@ -83,7 +83,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		if errTx != nil {
 			log.WithFields(log.Fields{
 				"error": errTx,
-			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store vice president photo")
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.RegisterElectionPair] failed to store vice president photo")
 			return nil, &custerr.ErrChain{
 				Message: "Failed to store vice president photo",
 				Cause:   errTx,
@@ -96,7 +96,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		electionPair.President.PhotoPath = presidentPhoto
 		electionPair.VicePresident.PhotoPath = vicePresidentPhoto
 
-		if txHash, errTx = m.electionRepo.InsertElectionPair(txCtx, electionPair, req.SignedTransaction); err != nil {
+		if errTx = m.electionRepo.InsertElectionPair(txCtx, electionPair); err != nil {
 			if errors.Is(errTx, dao.ErrDuplicate) {
 				_ = fileutils.DeleteFile(txCtx, photoPathPair)
 				_ = fileutils.DeleteFile(txCtx, presidentPhoto)
@@ -109,6 +109,19 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 				}
 			}
 			return nil, errTx
+		}
+
+		txHash, errTx = m.electionRepo.SendTxToBlockchain(txCtx, req.SignedTransaction)
+		if errTx != nil {
+			log.WithFields(log.Fields{
+				"error": errTx,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.RegisterElectionPair] failed to send transaction to blockchain")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to send transaction to blockchain",
+				Cause:   errTx,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
 		}
 
 		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElection.Value, electionPair.ID.String(), electionPair.ToMessageModel(txHash), map[string]any{
@@ -207,8 +220,40 @@ func (m *Module) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*respon
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    id,
-		}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to get election pair by id")
-		return nil, err
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairByID] failed to get election pair by id")
+		return nil, custerr.ErrChain{
+			Message: "Failed to get election pair by ID",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	electionPairContract, err := m.electionContract.GetElection(nil, electionPair.ID.String())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairByID] failed to get election pair contract")
+		return nil, custerr.ErrChain{
+			Message: "Failed to get election pair contract",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	if electionPair.ID.String() != electionPairContract.Id {
+		log.WithFields(log.Fields{
+			"id":          id,
+			"contract_id": electionPairContract.Id,
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairByID] election pair ID mismatch with contract ID")
+		return nil, &custerr.ErrChain{
+			Message: "Election Pair ID mismatch with contract ID",
+			Cause:   errors.New("ID mismatch"),
+			Code:    400,
+			Type:    response2.ErrBadRequest,
+		}
 	}
 
 	presidentEducationHistory := make([]response.EducationHistoryResponse, len(electionPair.President.EducationHistory))
@@ -375,75 +420,100 @@ func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPai
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to get all election pairs")
-		return nil, err
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetAllElectionPairs] failed to get all election pairs")
+		return nil, &custerr.ErrChain{
+			Message: "Failed to get all election pairs",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	electionPairsContract, err := m.electionContract.GetAllElection(nil)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetAllElectionPairs] failed to get all election pairs contract")
+		return nil, custerr.ErrChain{
+			Message: "Failed to get all election pairs contract",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	contractId := make(map[string]bool)
+	for _, contract := range electionPairsContract {
+		contractId[contract.Id] = true
 	}
 
 	pairResponse := make([]response.ElectionPairResponse, len(electionPairs))
 	for i, pair := range electionPairs {
-		presidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.President.EducationHistory))
-		for j, history := range pair.President.EducationHistory {
-			presidentEducationHistory[j] = response.EducationHistoryResponse{
-				InstituteName: history.InstituteName,
-				Year:          history.Year,
+		if contractId[pair.ID.String()] {
+			presidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.President.EducationHistory))
+			for j, history := range pair.President.EducationHistory {
+				presidentEducationHistory[j] = response.EducationHistoryResponse{
+					InstituteName: history.InstituteName,
+					Year:          history.Year,
+				}
 			}
-		}
 
-		presidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.President.WorkExperience))
-		for j, history := range pair.President.WorkExperience {
-			presidentWorkExperience[j] = response.WorkHistoryResponse{
-				InstituteName: history.InstituteName,
-				Position:      history.Position,
-				Year:          history.Year,
+			presidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.President.WorkExperience))
+			for j, history := range pair.President.WorkExperience {
+				presidentWorkExperience[j] = response.WorkHistoryResponse{
+					InstituteName: history.InstituteName,
+					Position:      history.Position,
+					Year:          history.Year,
+				}
 			}
-		}
 
-		vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.VicePresident.EducationHistory))
-		for j, history := range pair.VicePresident.EducationHistory {
-			vicePresidentEducationHistory[j] = response.EducationHistoryResponse{
-				InstituteName: history.InstituteName,
-				Year:          history.Year,
+			vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.VicePresident.EducationHistory))
+			for j, history := range pair.VicePresident.EducationHistory {
+				vicePresidentEducationHistory[j] = response.EducationHistoryResponse{
+					InstituteName: history.InstituteName,
+					Year:          history.Year,
+				}
 			}
-		}
 
-		vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.VicePresident.WorkExperience))
-		for j, history := range pair.VicePresident.WorkExperience {
-			vicePresidentWorkExperience[j] = response.WorkHistoryResponse{
-				InstituteName: history.InstituteName,
-				Position:      history.Position,
-				Year:          history.Year,
+			vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.VicePresident.WorkExperience))
+			for j, history := range pair.VicePresident.WorkExperience {
+				vicePresidentWorkExperience[j] = response.WorkHistoryResponse{
+					InstituteName: history.InstituteName,
+					Position:      history.Position,
+					Year:          history.Year,
+				}
 			}
-		}
-		pairResponse[i] = response.ElectionPairResponse{
-			ID:            pair.ID.String(),
-			ElectionNo:    pair.ElectionNo,
-			VoteCount:     pair.VoteCount,
-			IsActive:      pair.IsActive,
-			PairPhotoPath: pair.PairPhotoPath,
-			President: response.CandidateInfoResponse{
-				FullName:         pair.President.FullName,
-				EducationHistory: presidentEducationHistory,
-				WorkExperience:   presidentWorkExperience,
-				Gender:           pair.President.Gender,
-				BirthPlace:       pair.President.BirthPlace,
-				BirthDate:        pair.President.BirthDate,
-				Religion:         pair.President.Religion,
-				LastEducation:    pair.President.LastEducation,
-				Job:              pair.President.Job,
-				PhotoPath:        pair.President.PhotoPath,
-			},
-			VicePresident: response.CandidateInfoResponse{
-				FullName:         pair.VicePresident.FullName,
-				EducationHistory: vicePresidentEducationHistory,
-				WorkExperience:   vicePresidentWorkExperience,
-				Gender:           pair.VicePresident.Gender,
-				BirthPlace:       pair.VicePresident.BirthPlace,
-				BirthDate:        pair.VicePresident.BirthDate,
-				Religion:         pair.VicePresident.Religion,
-				LastEducation:    pair.VicePresident.LastEducation,
-				Job:              pair.VicePresident.Job,
-				PhotoPath:        pair.VicePresident.PhotoPath,
-			},
+			pairResponse[i] = response.ElectionPairResponse{
+				ID:            pair.ID.String(),
+				ElectionNo:    pair.ElectionNo,
+				VoteCount:     pair.VoteCount,
+				IsActive:      pair.IsActive,
+				PairPhotoPath: pair.PairPhotoPath,
+				President: response.CandidateInfoResponse{
+					FullName:         pair.President.FullName,
+					EducationHistory: presidentEducationHistory,
+					WorkExperience:   presidentWorkExperience,
+					Gender:           pair.President.Gender,
+					BirthPlace:       pair.President.BirthPlace,
+					BirthDate:        pair.President.BirthDate,
+					Religion:         pair.President.Religion,
+					LastEducation:    pair.President.LastEducation,
+					Job:              pair.President.Job,
+					PhotoPath:        pair.President.PhotoPath,
+				},
+				VicePresident: response.CandidateInfoResponse{
+					FullName:         pair.VicePresident.FullName,
+					EducationHistory: vicePresidentEducationHistory,
+					WorkExperience:   vicePresidentWorkExperience,
+					Gender:           pair.VicePresident.Gender,
+					BirthPlace:       pair.VicePresident.BirthPlace,
+					BirthDate:        pair.VicePresident.BirthDate,
+					Religion:         pair.VicePresident.Religion,
+					LastEducation:    pair.VicePresident.LastEducation,
+					Job:              pair.VicePresident.Job,
+					PhotoPath:        pair.VicePresident.PhotoPath,
+				},
+			}
 		}
 	}
 
@@ -491,7 +561,7 @@ func (m *Module) ActivateElectionPair(ctx context.Context, req *request.Election
 			}
 		}
 
-		txHash, errTx := m.electionRepo.ActivateElectionPair(txCtx, electionPair.ID, req.SignedTransaction)
+		errTx = m.electionRepo.ActivateElectionPair(txCtx, electionPair.ID)
 		if errTx != nil {
 			if errors.Is(errTx, dao.ErrNoResult) {
 				return nil, &custerr.ErrChain{
@@ -504,8 +574,26 @@ func (m *Module) ActivateElectionPair(ctx context.Context, req *request.Election
 			log.WithFields(log.Fields{
 				"error": errTx,
 				"id":    req.ID,
-			}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to activate election pair")
-			return nil, errTx
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.ActivateElectionPair] failed to activate election pair")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to activate election pair",
+				Cause:   errTx,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
+		}
+
+		txHash, errTx := m.electionRepo.SendTxToBlockchain(txCtx, req.SignedTransaction)
+		if errTx != nil {
+			log.WithFields(log.Fields{
+				"error": errTx,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.ActivateElectionPair] failed to send transaction to blockchain")
+			return nil, &custerr.ErrChain{
+				Message: "Failed to send transaction to blockchain",
+				Cause:   errTx,
+				Code:    500,
+				Type:    response2.ErrInternalServerError,
+			}
 		}
 
 		message := model.CreateElectionActivationMessage(electionPair.ID.String(), electionPair.IsActive, txHash)
@@ -555,7 +643,7 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    req.ElectionPairID,
-		}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to get existing election pair detail")
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.UpsertElectionPairDetail] failed to get existing election pair detail")
 		return nil, err
 	}
 
@@ -587,7 +675,7 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 			if err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
-				}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store program docs")
+				}).ErrorWithCtx(ctx, "[ElectionUseCases.UpsertElectionPairDetail] failed to store program docs")
 				return nil, &custerr.ErrChain{
 					Message: "Failed to store program docs",
 					Cause:   err,
@@ -618,7 +706,7 @@ func (m *Module) UpsertElectionPairDetail(ctx context.Context, req *request.Elec
 					log.WithFields(log.Fields{
 						"error": err,
 						"index": i,
-					}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to store work program photo")
+					}).ErrorWithCtx(ctx, "[ElectionUseCases.UpsertElectionPairDetail] failed to store work program photo")
 					return nil, &custerr.ErrChain{
 						Message: "Failed to store work program photo",
 						Cause:   err,
@@ -713,7 +801,7 @@ func (m *Module) GetElectionPairDetail(ctx context.Context, pairID uuid.UUID) (*
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    pairID,
-		}).ErrorWithCtx(ctx, "[ElectionUseCases] failed to get election pair detail")
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairDetail] failed to get election pair detail")
 		return nil, err
 	}
 

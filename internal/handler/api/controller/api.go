@@ -50,20 +50,14 @@ func New(opts *Options) *API {
 }
 
 func (api *API) RegisterRoute() *router.FastRouter {
-	corsConfig := &router.CorsConfig{
-		AllowOrigins:     "http://localhost:5173",
-		AllowMethods:     "GET, POST, PUT, PATCH, DELETE",
-		AllowHeaders:     "Content-Type, Authorization, x-user-id",
-		AllowCredentials: false,
-		MaxAge:           300,
-	}
+
 	myRouter := router.New(&router.Options{
 		Prefix:         api.prefix,
 		Port:           api.port,
 		ReadTimeout:    api.readTimeout,
 		WriteTimeout:   api.writeTimeout,
 		RequestTimeout: api.requestTimeout,
-		CorsConfig:     corsConfig,
+		CorsConfig:     api.corsConfig,
 	})
 
 	if api.enableSwagger {

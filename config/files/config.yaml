@@ -47,17 +47,17 @@ Encryption:
 
 BlockchainConfig:
   GanacheURL: "http://127.0.0.1:7545"
-  VotechainAddress: "0x49e158C527736f447A400BDFB128aEb3F0390b88"
-  ElectionManagerAddress: "0x6957Afa20F78cd0556D57b5Ca5506d0B2C815402"
-  KPUManagerAddress: "0x75E0A085E5839c9a53DF19d658F431B1D1e2D8F9"
-  VoterManagerAddress: "0x7B6B56B22efEA4142A1135c3628110Bb1546f012"
-  VotechainBaseAddress: "0x57a719B3166F818798135Abc81C87a9A2697A4c9"
+  VotechainAddress: "0xd39E794BCde9ddcE14f9Cd6E4eE4d319FeD1A5Ea"
+  ElectionManagerAddress: "0x996d0bE4F81CBA4EaB39Ec0380B048E95D71e2B4"
+  KPUManagerAddress: "0x15D340a739958950Aa8D9Ccb1BA2609f21B537a1"
+  VoterManagerAddress: "0x8c43Cea2fE39635De63893e45A072B8fD73a1be7"
+  VotechainBaseAddress: "0xB1aDFD125A736f17Fc8914c993698934BA834B13"
 
 
 Cors:
   AllowOrigins: "*"
   AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
-  AllowHeaders: "Content-Type,Authorization"
+  AllowHeaders: "*"
   AllowCredentials: false
   ExposeHeaders: "X-Custom-Header"
-  MaxAge: 3600
+  MaxAge: 3600g

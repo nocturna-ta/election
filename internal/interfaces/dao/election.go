@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/nocturna-ta/election/internal/domain/model"
@@ -17,35 +16,23 @@ import (
 	"github.com/nocturna-ta/golib/log"
 	"github.com/nocturna-ta/golib/tracing"
 	"github.com/nocturna-ta/golib/txmanager/utils"
-	"github.com/nocturna-ta/votechain-contract/binding/electionManager"
-	"github.com/nocturna-ta/votechain-contract/interfaces"
 	"time"
 )
 
 type ElectionRepository struct {
-	db       *sql.Store
-	contract interfaces.ElectionManagerInterface
-	client   ethereum.Client
+	db     *sql.Store
+	client ethereum.Client
 }
 
 type OptsElectionRepository struct {
-	DB              *sql.Store
-	ContractAddress common.Address
-	Contract        interfaces.ElectionManagerInterface
-	Client          ethereum.Client
+	DB     *sql.Store
+	Client ethereum.Client
 }
 
 func NewElectionRepository(opts *OptsElectionRepository) repository.ElectionRepository {
-	var contractInterface interfaces.ElectionManagerInterface
-	contract, err := electionManager.NewElectionManager(opts.ContractAddress, opts.Client.GetEthClient())
-	if err != nil {
-		return nil
-	}
-	contractInterface = contract
 	return &ElectionRepository{
-		db:       opts.DB,
-		contract: contractInterface,
-		client:   opts.Client,
+		db:     opts.DB,
+		client: opts.Client,
 	}
 }
 
@@ -80,18 +67,21 @@ const (
 	updatePairDetail = `UPDATE election_pair_details SET %s WHERE TRUE %s`
 )
 
-func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair, signedTransaction string) (string, error) {
+func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model.ElectionPair) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.InsertElectionPair")
 	defer span.End()
 
-	var txHash string
+	sqlTrx := utils.GetSqlTx(ctx)
+	var (
+		err error
+	)
 
 	presidentEducationJSON, err := json.Marshal(pair.President.EducationHistory)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president education history")
-		return "", err
+		return err
 	}
 
 	presidentWorkJSON, err := json.Marshal(pair.President.WorkExperience)
@@ -99,7 +89,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal president work experience")
-		return "", err
+		return err
 	}
 
 	vicePresidentEducationJSON, err := json.Marshal(pair.VicePresident.EducationHistory)
@@ -107,7 +97,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
-		return "", err
+		return err
 	}
 
 	vicePresidentWorkJSON, err := json.Marshal(pair.VicePresident.WorkExperience)
@@ -115,72 +105,70 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to marshal vice president work experience")
-		return "", err
+		return err
 	}
 
-	tx, err := utils2.StringToTx(signedTransaction)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert signed transaction")
-		return "", err
+	if sqlTrx != nil {
+		_, err = sqlTrx.ExecContext(
+			ctx,
+			insertElectionPair,
+			pair.ID,
+			pair.ElectionNo,
+			pair.VoteCount,
+			pair.IsActive,
+			pair.PairPhotoPath,
+			pair.President.FullName,
+			presidentEducationJSON,
+			presidentWorkJSON,
+			pair.President.Gender,
+			pair.President.BirthPlace,
+			pair.President.BirthDate,
+			pair.President.LastEducation,
+			pair.President.Job,
+			pair.President.PhotoPath,
+			pair.VicePresident.FullName,
+			vicePresidentEducationJSON,
+			vicePresidentWorkJSON,
+			pair.VicePresident.Gender,
+			pair.VicePresident.BirthPlace,
+			pair.VicePresident.BirthDate,
+			pair.VicePresident.LastEducation,
+			pair.VicePresident.Job,
+			pair.VicePresident.PhotoPath,
+			pair.CreatedAt,
+			pair.UpdatedAt,
+			pair.IsDeleted,
+		)
+	} else {
+		_, err = e.db.GetMaster().ExecContext(ctx,
+			insertElectionPair,
+			pair.ID,
+			pair.ElectionNo,
+			pair.VoteCount,
+			pair.IsActive,
+			pair.PairPhotoPath,
+			pair.President.FullName,
+			presidentEducationJSON,
+			presidentWorkJSON,
+			pair.President.Gender,
+			pair.President.BirthPlace,
+			pair.President.BirthDate,
+			pair.President.LastEducation,
+			pair.President.Job,
+			pair.President.PhotoPath,
+			pair.VicePresident.FullName,
+			vicePresidentEducationJSON,
+			vicePresidentWorkJSON,
+			pair.VicePresident.Gender,
+			pair.VicePresident.BirthPlace,
+			pair.VicePresident.BirthDate,
+			pair.VicePresident.LastEducation,
+			pair.VicePresident.Job,
+			pair.VicePresident.PhotoPath,
+			pair.CreatedAt,
+			pair.UpdatedAt,
+			pair.IsDeleted)
 	}
-
-	sqlTrx := utils.GetSqlTx(ctx)
-
-	var ownTransaction bool
-	if sqlTrx == nil {
-		var err error
-		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to begin transaction")
-			return "", err
-		}
-		ownTransaction = true
-
-		defer func() {
-			if err != nil && ownTransaction {
-				rollbackErr := sqlTrx.Rollback()
-				if rollbackErr != nil {
-					log.WithFields(log.Fields{
-						"error": rollbackErr,
-					}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to rollback transaction")
-				}
-			}
-		}()
-	}
-	_, err = sqlTrx.ExecContext(
-		ctx,
-		insertElectionPair,
-		pair.ID,
-		pair.ElectionNo,
-		pair.VoteCount,
-		pair.IsActive,
-		pair.PairPhotoPath,
-		pair.President.FullName,
-		presidentEducationJSON,
-		presidentWorkJSON,
-		pair.President.Gender,
-		pair.President.BirthPlace,
-		pair.President.BirthDate,
-		pair.President.LastEducation,
-		pair.President.Job,
-		pair.President.PhotoPath,
-		pair.VicePresident.FullName,
-		vicePresidentEducationJSON,
-		vicePresidentWorkJSON,
-		pair.VicePresident.Gender,
-		pair.VicePresident.BirthPlace,
-		pair.VicePresident.BirthDate,
-		pair.VicePresident.LastEducation,
-		pair.VicePresident.Job,
-		pair.VicePresident.PhotoPath,
-		pair.CreatedAt,
-		pair.UpdatedAt,
-		pair.IsDeleted,
-	)
 
 	if err != nil {
 		var pqErr *pq.Error
@@ -191,43 +179,17 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 					"error": err,
 					"pair":  pair,
 				}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Duplicate election pair")
-				return "", ErrDuplicate
+				return ErrDuplicate
 			}
 		}
 		log.WithFields(log.Fields{
 			"error": err,
 			"pair":  pair,
 		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to insert election pair")
-		return "", err
+		return err
 	}
 
-	txHash, err = e.client.SendTransaction(ctx, tx)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to send transaction")
-
-		if ownTransaction {
-			rollbackErr := sqlTrx.Rollback()
-			if rollbackErr != nil {
-				log.WithFields(log.Fields{
-					"error": rollbackErr,
-				}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to rollback transaction")
-			}
-		}
-		return "", err
-	}
-
-	if ownTransaction {
-		if err := sqlTrx.Commit(); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).ErrorWithCtx(ctx, "[ElectionRepository.InsertElectionPair] Failed to commit transaction")
-			return "", err
-		}
-	}
-
-	return txHash, nil
+	return nil
 }
 
 func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*model.ElectionPair, error) {
@@ -240,14 +202,6 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		err                  error
 		args                 []any
 	)
-
-	electionPair, err := e.contract.GetElection(nil, id.String())
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get election pair from contract")
-		return nil, err
-	}
 
 	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
@@ -274,17 +228,6 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get election pair by id")
 		return nil, err
 	}
-	if errors.Is(err, sql2.ErrNoRows) {
-		return nil, ErrNoResult
-	}
-
-	if electionPair.Id != electionPairModelDTO.ID.String() && electionPair.ElectionNo != electionPairModelDTO.ElectionNo {
-		log.WithFields(log.Fields{
-			"error": err,
-			"id":    id,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Election pair id not match")
-		return nil, ErrNoResult
-	}
 
 	dtoToDomainElection, err := electionPairModelDTO.ToDomain()
 	if err != nil {
@@ -308,14 +251,6 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		args                 []any
 	)
 
-	electionPair, err := e.contract.GetElectionByNo(nil, no)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get election pair from contract")
-		return nil, err
-	}
-
 	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
 		president_gender, president_birth_place, president_birth_date, president_last_education, 
@@ -333,7 +268,6 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 	} else {
 		err = e.db.GetMaster().GetContext(ctx, &electionPairModelDTO, query, args...)
 	}
-
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -341,24 +275,12 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get election pair by no")
 		return nil, err
 	}
-	if errors.Is(err, sql2.ErrNoRows) {
-		return nil, ErrNoResult
-	}
-
 	dtoToDomainElection, err := electionPairModelDTO.ToDomain()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert election pair model to domain")
 		return nil, err
-	}
-
-	if electionPair.ElectionNo != dtoToDomainElection.ElectionNo {
-		log.WithFields(log.Fields{
-			"error": err,
-			"no":    no,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Election pair no not match")
-		return nil, ErrNoResult
 	}
 
 	return dtoToDomainElection, nil
@@ -374,14 +296,6 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		err                   error
 	)
 
-	electionPairs, err := e.contract.GetAllElection(nil)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get all election pairs from contract")
-		return nil, err
-	}
-
 	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
 		president_gender, president_birth_place, president_birth_date, president_last_education, 
@@ -394,7 +308,6 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 	joinQuery := ``
 
 	query := fmt.Sprintf(selectElectionPair, selectQuery, joinQuery, whereClause)
-
 	if sqlTrx != nil {
 		err = sqlTrx.SelectContext(ctx, &electionPairModelsDTO, query)
 	} else {
@@ -420,82 +333,37 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		pairs[i] = *pairModel
 	}
 
-	var matchedPairs []model.ElectionPair
-	for _, electionPair := range electionPairs {
-		for _, pairModel := range pairs {
-			if electionPair.Id == pairModel.ID.String() {
-				matchedPairs = append(matchedPairs, pairModel)
-				break
-			}
-		}
-	}
-
-	if len(matchedPairs) == 0 {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] No election pairs found")
-		return nil, ErrNoResult
-	}
-
 	return pairs, nil
 }
 
-func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID, signedTransaction string) (string, error) {
+func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.UUID) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.ActivateElectionPair")
 	defer span.End()
-
-	tx, err := utils2.StringToTx(signedTransaction)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to convert signed transaction")
-		return "", err
-	}
-
 	sqlTrx := utils.GetSqlTx(ctx)
 
 	var (
-		ownTransaction bool
-		txHash         string
+		args   []any
+		err    error
+		result sql2.Result
 	)
-	if sqlTrx == nil {
-		var err error
-		sqlTrx, err = e.db.GetMaster().BeginTxx(ctx, nil)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to begin transaction")
-			return "", err
 
-		}
-		ownTransaction = true
-
-		defer func() {
-			if err != nil && ownTransaction {
-				rollbackErr := sqlTrx.Rollback()
-				if rollbackErr != nil {
-					log.WithFields(log.Fields{
-						"error": rollbackErr,
-					}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to rollback transaction")
-				}
-			}
-		}()
-	}
-
-	var args []any
 	setQuery := `is_active = true`
 	whereQuery := ` AND id = $1 AND is_deleted = false`
 	args = append(args, id)
 
 	query := fmt.Sprintf(updateElectionPair, setQuery, whereQuery)
+	if sqlTrx != nil {
+		result, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		result, err = e.db.GetMaster().ExecContext(ctx, query, args...)
+	}
 
-	result, err := sqlTrx.ExecContext(ctx, query, args...)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    id,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to activate election pair")
-		return "", err
+		return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -504,40 +372,14 @@ func (e *ElectionRepository) ActivateElectionPair(ctx context.Context, id uuid.U
 			"error": err,
 			"id":    id,
 		}).ErrorWithCtx(ctx, "[ElectionRepository] Failed to get rows affected")
-		return "", err
+		return err
 	}
 
 	if rowsAffected == 0 {
-		return "", ErrNoUpdateHappened
+		return ErrNoUpdateHappened
 	}
 
-	txHash, err = e.client.SendTransaction(ctx, tx)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to send transaction")
-
-		if ownTransaction {
-			rollbackErr := sqlTrx.Rollback()
-			if rollbackErr != nil {
-				log.WithFields(log.Fields{
-					"error": rollbackErr,
-				}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to rollback transaction")
-			}
-		}
-		return "", err
-	}
-
-	if ownTransaction {
-		if err := sqlTrx.Commit(); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).ErrorWithCtx(ctx, "[ElectionRepository.ActivateElectionPair] Failed to commit transaction")
-			return "", err
-		}
-	}
-
-	return txHash, nil
+	return nil
 }
 
 func (e *ElectionRepository) UpsertPairDetail(ctx context.Context, detail *model.PairDetail) error {
@@ -791,4 +633,28 @@ func (e *ElectionRepository) UpdateVicePresidentPhoto(ctx context.Context, id uu
 	}
 
 	return nil
+}
+
+func (e *ElectionRepository) SendTxToBlockchain(ctx context.Context, signedTransaction string) (string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.SendTxToBlockchain")
+	defer span.End()
+
+	tx, err := utils2.StringToTx(signedTransaction)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.SendTxToBlockchain] Failed to convert string to transaction")
+		return "", err
+	}
+
+	txHash, err := e.client.SendTransaction(ctx, tx)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"tx":    tx,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.SendTxToBlockchain] Failed to send transaction to blockchain")
+		return "", err
+	}
+
+	return txHash, nil
 }

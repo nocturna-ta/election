@@ -33,9 +33,8 @@ type options struct {
 
 func newContainer(opts *options) *container {
 	electionRepo := dao.NewElectionRepository(&dao.OptsElectionRepository{
-		DB:              opts.DB,
-		ContractAddress: common.HexToAddress(opts.Cfg.Blockchain.ElectionManagerAddress),
-		Client:          opts.Client,
+		DB:     opts.DB,
+		Client: opts.Client,
 	})
 
 	partyRepo := dao.NewPartyRepository(&dao.OptsPartyRepository{
@@ -78,6 +77,8 @@ func newContainer(opts *options) *container {
 		TxMgr:             txMgr,
 		Publisher:         opts.Publisher,
 		Topics:            opts.Cfg.Kafka.Topics,
+		ContractAddress:   common.HexToAddress(opts.Cfg.Blockchain.ElectionManagerAddress),
+		Client:            opts.Client,
 	})
 
 	return &container{
