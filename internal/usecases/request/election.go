@@ -36,6 +36,7 @@ type WorkHistoryRequest struct {
 type ElectionPairRegistrationRequest struct {
 	ID                string               `json:"id"`
 	ElectionNo        string               `json:"election_no"`
+	PairName          string               `json:"pair_name"`
 	PairPhotoPath     string               `json:"pair_photo_path"`
 	PairPhotoFile     io.Reader            `json:"-" swaggerignore:"true"`
 	PairPhotoName     string               `json:"-" swaggerignore:"true"`

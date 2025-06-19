@@ -175,6 +175,7 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 		ElectionNo:    electionPair.ElectionNo,
 		VoteCount:     electionPair.VoteCount,
 		IsActive:      electionPair.IsActive,
+		PairName:      electionPair.PairName,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
 			FullName:         electionPair.President.FullName,
@@ -295,6 +296,7 @@ func (m *Module) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*respon
 		ElectionNo:    electionPair.ElectionNo,
 		VoteCount:     electionPair.VoteCount,
 		IsActive:      electionPair.IsActive,
+		PairName:      electionPair.PairName,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
 			FullName:         electionPair.President.FullName,
@@ -384,6 +386,7 @@ func (m *Module) GetElectionPairByNo(ctx context.Context, no string) (*response.
 		ElectionNo:    electionPair.ElectionNo,
 		VoteCount:     electionPair.VoteCount,
 		IsActive:      electionPair.IsActive,
+		PairName:      electionPair.PairName,
 		PairPhotoPath: electionPair.PairPhotoPath,
 		President: response.CandidateInfoResponse{
 			FullName:         electionPair.President.FullName,
@@ -411,8 +414,7 @@ func (m *Module) GetElectionPairByNo(ctx context.Context, no string) (*response.
 		},
 	}, nil
 }
-
-func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPairListResponse, error) {
+func (m *Module) GetAllElectionPairs(ctx context.Context) (*[]response.ElectionPairFullResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetAllElectionPairs")
 	defer span.End()
 
@@ -434,7 +436,7 @@ func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPai
 		log.WithFields(log.Fields{
 			"error": err,
 		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetAllElectionPairs] failed to get all election pairs contract")
-		return nil, custerr.ErrChain{
+		return nil, &custerr.ErrChain{ // Fixed: Added missing pointer
 			Message: "Failed to get all election pairs contract",
 			Cause:   err,
 			Code:    500,
@@ -442,88 +444,141 @@ func (m *Module) GetAllElectionPairs(ctx context.Context) (*response.ElectionPai
 		}
 	}
 
+	// Create map for O(1) lookup
 	contractId := make(map[string]bool)
 	for _, contract := range electionPairsContract {
 		contractId[contract.Id] = true
 	}
 
-	pairResponse := make([]response.ElectionPairResponse, len(electionPairs))
-	for i, pair := range electionPairs {
-		if contractId[pair.ID.String()] {
-			presidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.President.EducationHistory))
-			for j, history := range pair.President.EducationHistory {
-				presidentEducationHistory[j] = response.EducationHistoryResponse{
-					InstituteName: history.InstituteName,
-					Year:          history.Year,
-				}
-			}
+	// Use dynamic slices instead of pre-allocated arrays
+	var fullResponse []response.ElectionPairFullResponse
 
-			presidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.President.WorkExperience))
-			for j, history := range pair.President.WorkExperience {
-				presidentWorkExperience[j] = response.WorkHistoryResponse{
-					InstituteName: history.InstituteName,
-					Position:      history.Position,
-					Year:          history.Year,
-				}
-			}
+	for _, pair := range electionPairs {
+		// Only process pairs that exist in contract
+		if !contractId[pair.ID.String()] {
+			continue
+		}
 
-			vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.VicePresident.EducationHistory))
-			for j, history := range pair.VicePresident.EducationHistory {
-				vicePresidentEducationHistory[j] = response.EducationHistoryResponse{
-					InstituteName: history.InstituteName,
-					Year:          history.Year,
-				}
-			}
-
-			vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.VicePresident.WorkExperience))
-			for j, history := range pair.VicePresident.WorkExperience {
-				vicePresidentWorkExperience[j] = response.WorkHistoryResponse{
-					InstituteName: history.InstituteName,
-					Position:      history.Position,
-					Year:          history.Year,
-				}
-			}
-			pairResponse[i] = response.ElectionPairResponse{
-				ID:            pair.ID.String(),
-				ElectionNo:    pair.ElectionNo,
-				VoteCount:     pair.VoteCount,
-				IsActive:      pair.IsActive,
-				PairPhotoPath: pair.PairPhotoPath,
-				President: response.CandidateInfoResponse{
-					FullName:         pair.President.FullName,
-					EducationHistory: presidentEducationHistory,
-					WorkExperience:   presidentWorkExperience,
-					Gender:           pair.President.Gender,
-					BirthPlace:       pair.President.BirthPlace,
-					BirthDate:        pair.President.BirthDate,
-					Religion:         pair.President.Religion,
-					LastEducation:    pair.President.LastEducation,
-					Job:              pair.President.Job,
-					PhotoPath:        pair.President.PhotoPath,
-				},
-				VicePresident: response.CandidateInfoResponse{
-					FullName:         pair.VicePresident.FullName,
-					EducationHistory: vicePresidentEducationHistory,
-					WorkExperience:   vicePresidentWorkExperience,
-					Gender:           pair.VicePresident.Gender,
-					BirthPlace:       pair.VicePresident.BirthPlace,
-					BirthDate:        pair.VicePresident.BirthDate,
-					Religion:         pair.VicePresident.Religion,
-					LastEducation:    pair.VicePresident.LastEducation,
-					Job:              pair.VicePresident.Job,
-					PhotoPath:        pair.VicePresident.PhotoPath,
-				},
+		// Process president education history
+		presidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.President.EducationHistory))
+		for j, history := range pair.President.EducationHistory {
+			presidentEducationHistory[j] = response.EducationHistoryResponse{
+				InstituteName: history.InstituteName,
+				Year:          history.Year,
 			}
 		}
+
+		// Process president work experience
+		presidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.President.WorkExperience))
+		for j, history := range pair.President.WorkExperience {
+			presidentWorkExperience[j] = response.WorkHistoryResponse{
+				InstituteName: history.InstituteName,
+				Position:      history.Position,
+				Year:          history.Year,
+			}
+		}
+
+		// Process vice president education history
+		vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(pair.VicePresident.EducationHistory))
+		for j, history := range pair.VicePresident.EducationHistory {
+			vicePresidentEducationHistory[j] = response.EducationHistoryResponse{
+				InstituteName: history.InstituteName,
+				Year:          history.Year,
+			}
+		}
+
+		// Process vice president work experience
+		vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(pair.VicePresident.WorkExperience))
+		for j, history := range pair.VicePresident.WorkExperience {
+			vicePresidentWorkExperience[j] = response.WorkHistoryResponse{
+				InstituteName: history.InstituteName,
+				Position:      history.Position,
+				Year:          history.Year,
+			}
+		}
+
+		detail, err := m.electionRepo.GetPairDetailByPairID(ctx, pair.ID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error":   err,
+				"pair_id": pair.ID.String(),
+			}).WarnWithCtx(ctx, "[ElectionUseCases.GetAllElectionPairs] failed to get pair detail, using default values")
+		}
+
+		// Build detail response
+		var detailResponse response.ElectionPairDetailResponse
+		if detail == nil {
+			detailResponse = response.ElectionPairDetailResponse{
+				ID:             "",
+				ElectionPairID: pair.ID.String(),
+				Vision:         "",
+				Mission:        "",
+				WorkProgram:    nil,
+				ProgramDocs:    "",
+			}
+		} else {
+			workProgram := make([]response.WorkProgramResponse, len(detail.WorkProgram))
+			for i, program := range detail.WorkProgram {
+				workProgram[i] = response.WorkProgramResponse{
+					ProgramName:  program.ProgramName,
+					ProgramPhoto: program.ProgramPhoto,
+					ProgramDesc:  program.ProgramDesc,
+				}
+			}
+			detailResponse = response.ElectionPairDetailResponse{
+				ID:             detail.ID.String(),
+				ElectionPairID: pair.ID.String(),
+				Vision:         detail.Vision,
+				Mission:        detail.Mission,
+				WorkProgram:    workProgram,
+				ProgramDocs:    detail.ProgramDocs,
+			}
+		}
+
+		pairResponse := response.ElectionPairResponse{
+			ID:            pair.ID.String(),
+			ElectionNo:    pair.ElectionNo,
+			VoteCount:     pair.VoteCount,
+			IsActive:      pair.IsActive,
+			PairName:      pair.PairName,
+			PairPhotoPath: pair.PairPhotoPath,
+			President: response.CandidateInfoResponse{
+				FullName:         pair.President.FullName,
+				EducationHistory: presidentEducationHistory,
+				WorkExperience:   presidentWorkExperience,
+				Gender:           pair.President.Gender,
+				BirthPlace:       pair.President.BirthPlace,
+				BirthDate:        pair.President.BirthDate,
+				Religion:         pair.President.Religion,
+				LastEducation:    pair.President.LastEducation,
+				Job:              pair.President.Job,
+				PhotoPath:        pair.President.PhotoPath,
+			},
+			VicePresident: response.CandidateInfoResponse{
+				FullName:         pair.VicePresident.FullName,
+				EducationHistory: vicePresidentEducationHistory,
+				WorkExperience:   vicePresidentWorkExperience,
+				Gender:           pair.VicePresident.Gender,
+				BirthPlace:       pair.VicePresident.BirthPlace,
+				BirthDate:        pair.VicePresident.BirthDate,
+				Religion:         pair.VicePresident.Religion,
+				LastEducation:    pair.VicePresident.LastEducation,
+				Job:              pair.VicePresident.Job,
+				PhotoPath:        pair.VicePresident.PhotoPath,
+			},
+		}
+
+		fullPairResponse := response.ElectionPairFullResponse{
+			ElectionPairResponse: pairResponse,
+			Detail:               detailResponse,
+			SupportingParties:    nil,
+		}
+
+		fullResponse = append(fullResponse, fullPairResponse)
 	}
 
-	return &response.ElectionPairListResponse{
-		Pairs: pairResponse,
-		Total: len(electionPairs),
-	}, nil
-
+	return &fullResponse, nil
 }
-
 func (m *Module) ActivateElectionPair(ctx context.Context, req *request.ElectionPairActivationRequest) (*response.ElectionPairActivationResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.ActivateElectionPair")
 	defer span.End()
@@ -978,5 +1033,47 @@ func (m *Module) GetElectionPairFull(ctx context.Context, id uuid.UUID) (*respon
 	}
 
 	return fullResp, nil
+}
 
+func (m *Module) GetWorkProgramFile(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetWorkProgramFile")
+	defer span.End()
+
+	detail, err := m.electionRepo.GetPairDetailByPairID(ctx, id)
+	if err != nil {
+		if errors.Is(err, dao.ErrNoResult) {
+			return nil, "", &custerr.ErrChain{
+				Message: "Election Pair Detail not found",
+				Cause:   err,
+				Code:    404,
+				Type:    response2.ErrNotFound,
+			}
+		}
+		log.WithFields(log.Fields{
+			"error": err,
+			"id":    id,
+		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetWorkProgramFile] failed to get election pair detail")
+		return nil, "", err
+	}
+
+	if detail.ProgramDocs == "" {
+		return nil, "", &custerr.ErrChain{
+			Message: "Work program file not found",
+			Cause:   errors.New("file not found"),
+			Code:    404,
+			Type:    response2.ErrNotFound,
+		}
+	}
+
+	file, contentType, err := filehandler.GetFileFromPath(ctx, detail.ProgramDocs, filehandler.DisplayModeAttachment)
+	if err != nil {
+		return nil, "", &custerr.ErrChain{
+			Message: "Failed to get work program file",
+			Cause:   err,
+			Code:    500,
+			Type:    response2.ErrInternalServerError,
+		}
+	}
+
+	return file, contentType, nil
 }

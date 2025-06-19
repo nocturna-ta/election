@@ -35,6 +35,7 @@ type ElectionPairResponse struct {
 	ElectionNo    string                `json:"election_no"`
 	VoteCount     int                   `json:"vote_count"`
 	IsActive      bool                  `json:"is_active"`
+	PairName      string                `json:"pair_name"`
 	PairPhotoPath string                `json:"pair_photo_path"`
 	President     CandidateInfoResponse `json:"president"`
 	VicePresident CandidateInfoResponse `json:"vice_president"`

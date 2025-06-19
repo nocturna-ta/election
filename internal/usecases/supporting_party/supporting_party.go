@@ -20,7 +20,7 @@ func (m *Module) AddSupportingParty(ctx context.Context, req *request.AddSupport
 	defer span.End()
 
 	var (
-		supportingParty *model.SupportingParty
+		supportingParty model.SupportingParty
 	)
 
 	pairID, err := uuid.Parse(req.ElectionPairID)

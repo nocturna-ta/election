@@ -4,7 +4,6 @@ import (
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/election/internal/handler/api/controller"
 	"github.com/nocturna-ta/election/internal/usecases"
-	"github.com/nocturna-ta/election/pkg/utils"
 	"github.com/nocturna-ta/golib/log"
 	"github.com/nocturna-ta/golib/router"
 )
@@ -33,7 +32,6 @@ func New(opts *Options) *Handler {
 		WriteTimeout:      opts.Cfg.Server.WriteTimeout,
 		RequestTimeout:    opts.Cfg.API.APITimeout,
 		EnableSwagger:     opts.Cfg.API.EnableSwagger,
-		CorsConfig:        utils.ConvertToRouterCorsConfig(&opts.Cfg.Cors),
 		ElectionUc:        opts.ElectionUc,
 		PartyUc:           opts.PartyUc,
 		SupportingPartyUc: opts.SupportingPartyUc,

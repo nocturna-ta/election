@@ -12,6 +12,7 @@ type ElectionPairDTO struct {
 	VoteCount     int       `db:"vote_count"`
 	IsActive      bool      `db:"is_active"`
 	PairPhotoPath string    `db:"pair_photo_path"`
+	PairName      string    `db:"pair_name"`
 
 	PresidentFullName         string          `db:"president_full_name"`
 	PresidentEducationHistory json.RawMessage `db:"president_education_history"`
@@ -94,6 +95,7 @@ func (dto *ElectionPairDTO) ToDomain() (*ElectionPair, error) {
 		ID:            dto.ID,
 		ElectionNo:    dto.ElectionNo,
 		VoteCount:     dto.VoteCount,
+		PairName:      dto.PairName,
 		IsActive:      dto.IsActive,
 		PairPhotoPath: dto.PairPhotoPath,
 		President: &CandidateInfo{

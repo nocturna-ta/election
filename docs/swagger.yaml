@@ -106,6 +106,8 @@ definitions:
         type: string
       is_active:
         type: boolean
+      pair_name:
+        type: string
       pair_photo_path:
         type: string
       president:
@@ -119,15 +121,6 @@ definitions:
       vote_count:
         type: integer
     type: object
-  response.ElectionPairListResponse:
-    properties:
-      pairs:
-        items:
-          $ref: '#/definitions/response.ElectionPairResponse'
-        type: array
-      total:
-        type: integer
-    type: object
   response.ElectionPairResponse:
     properties:
       election_no:
@@ -136,6 +129,8 @@ definitions:
         type: string
       is_active:
         type: boolean
+      pair_name:
+        type: string
       pair_photo_path:
         type: string
       president:
@@ -243,7 +238,9 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.ElectionPairListResponse'
+                  items:
+                    $ref: '#/definitions/response.ElectionPairFullResponse'
+                  type: array
               type: object
       summary: Election
       tags:
@@ -325,6 +322,74 @@ paths:
       summary: Election
       tags:
       - Election
+  /v1/election/pairs/{id}/detail:
+    get:
+      consumes:
+      - application/json
+      description: Get Election Pair Detail
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairDetailResponse'
+              type: object
+      summary: Election Detail
+      tags:
+      - Election-Detail
+  /v1/election/pairs/{id}/detail/program-docs:
+    get:
+      description: Get Election Pair Docs
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/pdf
+      - application/docx
+      responses:
+        "200":
+          description: OK
+      summary: Election Pair Docs
+      tags:
+      - Election-Docs
   /v1/election/pairs/{id}/full:
     get:
       consumes:
@@ -441,45 +506,7 @@ paths:
       summary: Vice President Photo
       tags:
       - Election-Images
-  /v1/election/pairs/{pairID}/detail:
-    get:
-      consumes:
-      - application/json
-      description: Get Election Pair Detail
-      parameters:
-      - description: Authorized User
-        in: header
-        name: X-User-Id
-        type: string
-      - description: Authorized Address
-        in: header
-        name: X-Address-Id
-        type: string
-      - description: Authorized Role
-        in: header
-        name: X-Role
-        type: string
-      - description: Election Pair ID
-        in: path
-        name: pairID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/controller.jsonResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/response.ElectionPairDetailResponse'
-              type: object
-      summary: Election Detail
-      tags:
-      - Election-Detail
-  /v1/election/pairs/{pairID}/supporting-parties:
+  /v1/election/pairs/{id}/supporting-parties:
     get:
       consumes:
       - application/json
@@ -499,7 +526,7 @@ paths:
         type: string
       - description: Election Pair ID
         in: path
-        name: pairID
+        name: id
         required: true
         type: string
       produces:
@@ -518,7 +545,7 @@ paths:
       tags:
       - Supporting-Party
   /v1/election/pairs/detail:
-    post:
+    put:
       consumes:
       - multipart/form-data
       description: Create or Update Election Pair Detail with multiple work programs.

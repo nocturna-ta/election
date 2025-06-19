@@ -15,7 +15,6 @@ type API struct {
 	writeTimeout      time.Duration
 	requestTimeout    time.Duration
 	enableSwagger     bool
-	corsConfig        *router.CorsConfig
 	electionUc        usecases.ElectionUseCases
 	partyUc           usecases.PartyUseCases
 	supportingPartyUc usecases.SupportingPartyUseCases
@@ -28,7 +27,6 @@ type Options struct {
 	WriteTimeout      time.Duration
 	RequestTimeout    time.Duration
 	EnableSwagger     bool
-	CorsConfig        *router.CorsConfig
 	ElectionUc        usecases.ElectionUseCases
 	PartyUc           usecases.PartyUseCases
 	SupportingPartyUc usecases.SupportingPartyUseCases
@@ -42,7 +40,6 @@ func New(opts *Options) *API {
 		writeTimeout:      opts.WriteTimeout,
 		requestTimeout:    opts.RequestTimeout,
 		enableSwagger:     opts.EnableSwagger,
-		corsConfig:        opts.CorsConfig,
 		electionUc:        opts.ElectionUc,
 		partyUc:           opts.PartyUc,
 		supportingPartyUc: opts.SupportingPartyUc,
@@ -57,11 +54,10 @@ func (api *API) RegisterRoute() *router.FastRouter {
 		ReadTimeout:    api.readTimeout,
 		WriteTimeout:   api.writeTimeout,
 		RequestTimeout: api.requestTimeout,
-		CorsConfig:     api.corsConfig,
 	})
 
 	if api.enableSwagger {
-		myRouter.CustomHandler("GET", "/docs/*", swagger.HandlerDefault, router.MustAuthorized(false))
+		myRouter.CustomHandler("GET", "/election/docs/*", swagger.HandlerDefault, router.MustAuthorized(false))
 	}
 
 	myRouter.GET("/health", api.Ping, router.MustAuthorized(false))
@@ -76,16 +72,17 @@ func (api *API) RegisterRoute() *router.FastRouter {
 					id.ATTACHMENT("/photo/vice-president", api.GetVicePresidentPhoto, router.MustAuthorized(false))
 					id.PUT("/activate", api.ActivateElectionPair, router.MustAuthorized(false))
 					id.GET("/full", api.GetElectionPairFull, router.MustAuthorized(false))
+					id.GET("/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
+					id.ATTACHMENT("/detail/program-docs", api.GetElectionProgramDocs, router.MustAuthorized(false))
+					id.GET("/supporting-parties", api.GetSupportingPartiesByPairID, router.MustAuthorized(false))
 				})
 				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
 				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))
 				pairs.POST("/register", api.RegisterElectionPair, router.MustAuthorized(false))
-				pairs.POST("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
-				pairs.GET("/:pairID/detail", api.GetElectionPairDetail, router.MustAuthorized(false))
+				pairs.PUT("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
 
 				pairs.POST("/supporting-party", api.AddSupportingParty, router.MustAuthorized(false))
 				pairs.DELETE("/supporting-party", api.RemoveSupportingParty, router.MustAuthorized(false))
-				pairs.GET("/:pairID/supporting-parties", api.GetSupportingPartiesByPairID, router.MustAuthorized(false))
 			})
 		})
 

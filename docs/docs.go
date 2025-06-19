@@ -84,7 +84,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.ElectionPairListResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/response.ElectionPairFullResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -95,7 +98,7 @@ const docTemplate = `{
             }
         },
         "/v1/election/pairs/detail": {
-            "post": {
+            "put": {
                 "description": "Create or Update Election Pair Detail with multiple work programs. For work program photos, use naming convention 'work_program_photo_[index]' where index matches the position in the work_program array.",
                 "consumes": [
                     "multipart/form-data"
@@ -554,6 +557,113 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/{id}/detail": {
+            "get": {
+                "description": "Get Election Pair Detail",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election-Detail"
+                ],
+                "summary": "Election Detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/election/pairs/{id}/detail/program-docs": {
+            "get": {
+                "description": "Get Election Pair Docs",
+                "produces": [
+                    "application/pdf",
+                    "application/docx"
+                ],
+                "tags": [
+                    "Election-Docs"
+                ],
+                "summary": "Election Pair Docs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Election Pair ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{id}/full": {
             "get": {
                 "description": "Get Full Election Pair Data with Details and Supporting Parties",
@@ -733,69 +843,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/election/pairs/{pairID}/detail": {
-            "get": {
-                "description": "Get Election Pair Detail",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Election-Detail"
-                ],
-                "summary": "Election Detail",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorized User",
-                        "name": "X-User-Id",
-                        "in": "header"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Authorized Address",
-                        "name": "X-Address-Id",
-                        "in": "header"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Authorized Role",
-                        "name": "X-Role",
-                        "in": "header"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Election Pair ID",
-                        "name": "pairID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/controller.jsonResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/response.ElectionPairDetailResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/election/pairs/{pairID}/supporting-parties": {
+        "/v1/election/pairs/{id}/supporting-parties": {
             "get": {
                 "description": "Get all supporting parties for an election pair",
                 "consumes": [
@@ -830,7 +878,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Election Pair ID",
-                        "name": "pairID",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1371,6 +1419,9 @@ const docTemplate = `{
                 "is_active": {
                     "type": "boolean"
                 },
+                "pair_name": {
+                    "type": "string"
+                },
                 "pair_photo_path": {
                     "type": "string"
                 },
@@ -1391,20 +1442,6 @@ const docTemplate = `{
                 }
             }
         },
-        "response.ElectionPairListResponse": {
-            "type": "object",
-            "properties": {
-                "pairs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/response.ElectionPairResponse"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
         "response.ElectionPairResponse": {
             "type": "object",
             "properties": {
@@ -1416,6 +1453,9 @@ const docTemplate = `{
                 },
                 "is_active": {
                     "type": "boolean"
+                },
+                "pair_name": {
+                    "type": "string"
                 },
                 "pair_photo_path": {
                     "type": "string"

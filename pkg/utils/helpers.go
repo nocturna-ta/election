@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/golib/custerr"
 	"github.com/nocturna-ta/golib/fileutils"
 	"github.com/nocturna-ta/golib/http/filehandler"
 	"github.com/nocturna-ta/golib/response"
-	"github.com/nocturna-ta/golib/router"
 	"github.com/nocturna-ta/golib/tracing"
 	"io"
 	"mime/multipart"
@@ -178,15 +176,4 @@ func StringToTx(signedTx string) (*types.Transaction, error) {
 	}
 
 	return tx, nil
-}
-
-func ConvertToRouterCorsConfig(configCors *config.CorsConfig) *router.CorsConfig {
-	return &router.CorsConfig{
-		AllowOrigins:     configCors.AllowOrigins,
-		AllowMethods:     configCors.AllowMethods,
-		AllowHeaders:     configCors.AllowHeaders,
-		AllowCredentials: configCors.AllowCredentials,
-		ExposeHeaders:    configCors.ExposeHeaders,
-		MaxAge:           configCors.MaxAge,
-	}
 }

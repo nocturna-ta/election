@@ -39,7 +39,7 @@ func NewElectionRepository(opts *OptsElectionRepository) repository.ElectionRepo
 const (
 	insertElectionPair = `
 		INSERT INTO election_pairs (
-		id, election_no, vote_count, is_active, pair_photo_path, president_full_name,
+		id, election_no, vote_count, is_active, pair_name, pair_photo_path, president_full_name,
 		president_education_history, president_work_experience, president_gender, president_birth_place,
 		president_birth_date, president_last_education, president_job, president_photo_path, vice_president_full_name,
 		vice_president_education_history, vice_president_work_experience, vice_president_gender, vice_president_birth_place,
@@ -49,7 +49,7 @@ const (
 			$1, $2, $3, $4, 
 			$5, $6, $7, $8, $9, 
 			$10, $11, $12, $13, $14,
-			$15, $16, $17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+			$15, $16, $17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
 		)
 	`
 	selectElectionPair = `SELECT %s FROM election_pairs %s WHERE TRUE %s`
@@ -116,6 +116,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 			pair.ElectionNo,
 			pair.VoteCount,
 			pair.IsActive,
+			pair.PairName,
 			pair.PairPhotoPath,
 			pair.President.FullName,
 			presidentEducationJSON,
@@ -146,6 +147,7 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 			pair.ElectionNo,
 			pair.VoteCount,
 			pair.IsActive,
+			pair.PairName,
 			pair.PairPhotoPath,
 			pair.President.FullName,
 			presidentEducationJSON,
@@ -203,7 +205,7 @@ func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UU
 		args                 []any
 	)
 
-	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+	selectQuery := `id, election_no, vote_count, is_active, pair_name, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
 		president_gender, president_birth_place, president_birth_date, president_last_education, 
 		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 
@@ -251,7 +253,7 @@ func (e *ElectionRepository) GetElectionPairByNo(ctx context.Context, no string)
 		args                 []any
 	)
 
-	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+	selectQuery := `id, election_no, vote_count, is_active, pair_name, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
 		president_gender, president_birth_place, president_birth_date, president_last_education, 
 		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 
@@ -296,7 +298,7 @@ func (e *ElectionRepository) GetAllElectionPairs(ctx context.Context) ([]model.E
 		err                   error
 	)
 
-	selectQuery := `id, election_no, vote_count, is_active, pair_photo_path, 
+	selectQuery := `id, election_no, vote_count, is_active, pair_name, pair_photo_path, 
 		president_full_name, president_education_history, president_work_experience, 
 		president_gender, president_birth_place, president_birth_date, president_last_education, 
 		president_job, president_photo_path, vice_president_full_name, vice_president_education_history, 

@@ -65,15 +65,15 @@ func (api *API) AddSupportingParty(ctx context.Context, req *router.Request) (*r
 // @Param 		X-User-Id header string false "Authorized User"
 // @Param 		X-Address-Id header string false "Authorized Address"
 // @Param 		X-Role header string false "Authorized Role"
-// @Param 		pairID path string true "Election Pair ID"
+// @Param 		id path string true "Election Pair ID"
 // @Produce		json
 // @Success		200	{object}	jsonResponse{data=response.SupportingPartiesResponse}
-// @Router		/v1/election/pairs/{pairID}/supporting-parties [get]
+// @Router		/v1/election/pairs/{id}/supporting-parties [get]
 func (api *API) GetSupportingPartiesByPairID(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetSupportingPartiesByPairID")
 	defer span.End()
 
-	pairID, err := uuid.Parse(req.Params("pairID"))
+	pairID, err := uuid.Parse(req.Params("id"))
 	if err != nil {
 		return cutresp.CustomErrorResponse(&custerr.ErrChain{
 			Message: "Invalid election pair ID format",

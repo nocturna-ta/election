@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS "election_pairs" (
     vote_count INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
     pair_photo_path VARCHAR(512),
+    pair_name VARCHAR(255) NOT NULL,
 
     -- President candidate info
     president_full_name VARCHAR(255) NOT NULL,

@@ -13,6 +13,7 @@ type ElectionPair struct {
 	VoteCount         int               `db:"vote_count"`
 	IsActive          bool              `db:"is_active"`
 	PairPhotoPath     string            `db:"pair_photo_path"`
+	PairName          string            `db:"pair_name"`
 	President         *CandidateInfo    `db:"president"`
 	VicePresident     *CandidateInfo    `db:"vice_president"`
 	SupportingParties []SupportingParty `db:"-"`
@@ -115,6 +116,7 @@ func ConstructElectionPair(req *request.ElectionPairRegistrationRequest) *Electi
 		ElectionNo:    req.ElectionNo,
 		VoteCount:     0,
 		IsActive:      false,
+		PairName:      req.PairName,
 		PairPhotoPath: req.PairPhotoPath,
 		President:     president,
 		VicePresident: vicePresident,

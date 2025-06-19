@@ -129,7 +129,7 @@ func (api *API) GetElectionPairByNo(ctx context.Context, req *router.Request) (*
 // @Param X-Role header string false "Authorized Role"
 // @Accept		json
 // @Produce		json
-// @Success		200	{object}	jsonResponse{data=response.ElectionPairListResponse}
+// @Success		200	{object}	jsonResponse{data=[]response.ElectionPairFullResponse}
 // @Router		/v1/election/pairs	[get]
 func (api *API) GetAllElectionPairs(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetAllElectionPairs")
@@ -184,15 +184,15 @@ func (api *API) GetElectionPairByID(ctx context.Context, req *router.Request) (*
 // @Param X-User-Id header string false "Authorized User"
 // @Param X-Address-Id header string false "Authorized Address"
 // @Param X-Role header string false "Authorized Role"
-// @Param 		pairID path string true "Election Pair ID"
+// @Param 		id path string true "Election Pair ID"
 // @Produce		json
 // @Success		200	{object}	jsonResponse{data=response.ElectionPairDetailResponse}
-// @Router		/v1/election/pairs/{pairID}/detail	[get]
+// @Router		/v1/election/pairs/{id}/detail	[get]
 func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionPairDetail")
 	defer span.End()
 
-	pairID, err := uuid.Parse(req.Params("pairID"))
+	pairID, err := uuid.Parse(req.Params("id"))
 	if err != nil {
 		return cutresp.CustomErrorResponse(&custerr.ErrChain{
 			Message: "Invalid Election Pair ID",
@@ -222,7 +222,7 @@ func (api *API) GetElectionPairDetail(ctx context.Context, req *router.Request) 
 // @Param       work_program_photo_* formData file false "Photos for work programs (jpg, jpeg, png only). Use pattern work_program_photo_0, work_program_photo_1, etc."
 // @Produce     json
 // @Success     200 {object} jsonResponse{data=response.ElectionPairDetailResponse}
-// @Router      /v1/election/pairs/detail [post]
+// @Router      /v1/election/pairs/detail [put]
 func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.UpsertElectionPairDetail")
 	defer span.End()
@@ -482,4 +482,37 @@ func (api *API) GetElectionPairFull(ctx context.Context, req *router.Request) (*
 	}
 
 	return rest.NewJSONResponse().SetData(res), nil
+}
+
+// GetElectionProgramDocs godoc
+// @Summary     Election Pair Docs
+// @Description Get Election Pair Docs
+// @Tags        Election-Docs
+// @Param X-User-Id header string false "User"
+// @Param X-Address-Id header string false "Address"
+// @Param X-Role header string false "Role"
+// @Param       id path string true "Election Pair ID"
+// @Produce     application/pdf
+// @Produce     application/docx
+// @Success     200
+// @Router      /v1/election/pairs/{id}/detail/program-docs [get]
+func (api *API) GetElectionProgramDocs(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.GetElectionProgramDocs")
+	defer span.End()
+
+	id, err := uuid.Parse(req.Params("id"))
+	if err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid Election Pair ID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	file, contentType, err := api.electionUc.GetWorkProgramFile(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
 }

@@ -15,7 +15,6 @@ type (
 		JWT        JWTConfig        `yaml:"JWT"`
 		Kafka      KafkaConfig      `yaml:"Kafka"`
 		Encryption EncryptionConfig `yaml:"Encryption"`
-		Cors       CorsConfig       `yaml:"Cors"`
 		GrpcServer GrpcServerConfig `yaml:"GrpcServer"`
 	}
 	ServerConfig struct {
@@ -72,14 +71,6 @@ type (
 	}
 	EncryptionConfig struct {
 		Key string `yaml:"Key" env:"ENCRYPTION_KEY"`
-	}
-	CorsConfig struct {
-		AllowOrigins     string `yaml:"AllowOrigins"`
-		AllowMethods     string `yaml:"AllowMethods"`
-		AllowHeaders     string `yaml:"AllowHeaders"`
-		AllowCredentials bool   `yaml:"AllowCredentials"`
-		ExposeHeaders    string `yaml:"ExposeHeaders"`
-		MaxAge           int    `yaml:"MaxAge"`
 	}
 )
 
