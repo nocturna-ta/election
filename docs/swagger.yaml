@@ -17,45 +17,177 @@ definitions:
       message:
         type: string
     type: object
-  request.CandidateActivationRequest:
+  request.AddSupportingPartyRequest:
+    properties:
+      election_pair_id:
+        type: string
+      party_id:
+        type: string
+    type: object
+  request.ElectionPairActivationRequest:
     properties:
       id:
         type: string
       signed_transaction:
         type: string
     type: object
-  request.CandidateRegistrationRequest:
+  request.RemoveSupportingPartyRequest:
     properties:
+      election_pair_id:
+        type: string
+      party_id:
+        type: string
+    type: object
+  response.CandidateInfoResponse:
+    properties:
+      birth_date:
+        type: string
+      birth_place:
+        type: string
+      education_history:
+        items:
+          $ref: '#/definitions/response.EducationHistoryResponse'
+        type: array
+      full_name:
+        type: string
+      gender:
+        type: string
+      job:
+        type: string
+      last_education:
+        type: string
+      photo_path:
+        type: string
+      religion:
+        type: string
+      work_experience:
+        items:
+          $ref: '#/definitions/response.WorkHistoryResponse'
+        type: array
+    type: object
+  response.EducationHistoryResponse:
+    properties:
+      institute_name:
+        type: string
+      year:
+        type: string
+    type: object
+  response.ElectionPairActivationResponse:
+    properties:
+      id:
+        type: string
+      is_active:
+        type: boolean
+    type: object
+  response.ElectionPairDetailResponse:
+    properties:
+      election_pair_id:
+        type: string
+      id:
+        type: string
+      mission:
+        type: string
+      program_docs:
+        type: string
+      vision:
+        type: string
+      work_program:
+        items:
+          $ref: '#/definitions/response.WorkProgramResponse'
+        type: array
+    type: object
+  response.ElectionPairFullResponse:
+    properties:
+      detail:
+        $ref: '#/definitions/response.ElectionPairDetailResponse'
       election_no:
         type: string
       id:
         type: string
-      name_candidate:
-        items:
-          type: string
-        type: array
-      signed_transaction:
-        type: string
-    type: object
-  response.CandidateActivation:
-    properties:
       is_active:
         type: boolean
-    type: object
-  response.CandidateResponse:
-    properties:
-      election_no:
+      pair_name:
         type: string
-      id:
+      pair_photo_path:
         type: string
-      is_active:
-        type: boolean
-      name_candidate:
+      president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      supporting_parties:
         items:
-          type: string
+          $ref: '#/definitions/response.SupportingPartyResponse'
         type: array
+      vice_president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
       vote_count:
         type: integer
+    type: object
+  response.ElectionPairResponse:
+    properties:
+      election_no:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      pair_name:
+        type: string
+      pair_photo_path:
+        type: string
+      president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      vice_president:
+        $ref: '#/definitions/response.CandidateInfoResponse'
+      vote_count:
+        type: integer
+    type: object
+  response.PartyResponse:
+    properties:
+      id:
+        type: string
+      logo_path:
+        type: string
+      name:
+        type: string
+    type: object
+  response.SupportingPartiesResponse:
+    properties:
+      parties:
+        items:
+          $ref: '#/definitions/response.SupportingPartyResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  response.SupportingPartyResponse:
+    properties:
+      election_pair_id:
+        type: string
+      id:
+        type: string
+      party:
+        $ref: '#/definitions/response.PartyResponse'
+      party_id:
+        type: string
+    type: object
+  response.WorkHistoryResponse:
+    properties:
+      institute_name:
+        type: string
+      position:
+        type: string
+      year:
+        type: string
+    type: object
+  response.WorkProgramResponse:
+    properties:
+      program_desc:
+        items:
+          type: string
+        type: array
+      program_name:
+        type: string
+      program_photo:
+        type: string
     type: object
 info:
   contact: {}
@@ -78,18 +210,24 @@ paths:
       summary: Ping
       tags:
       - Health
-  /v1/election/activate:
-    post:
+  /v1/election/pairs:
+    get:
       consumes:
       - application/json
-      description: Activate Candidate
+      description: Get All Election Pairs
       parameters:
-      - description: Activate Request
-        in: body
-        name: candidate
-        required: true
-        schema:
-          $ref: '#/definitions/request.CandidateActivationRequest'
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
       produces:
       - application/json
       responses:
@@ -100,18 +238,382 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateActivation'
+                  items:
+                    $ref: '#/definitions/response.ElectionPairFullResponse'
+                  type: array
               type: object
       summary: Election
       tags:
       - Election
-  /v1/election/candidate/{no}:
+  /v1/election/pairs/{id}:
     get:
       consumes:
       - application/json
-      description: Get Candidate By No
+      description: Get Election Pair By ID
       parameters:
-      - description: Election No
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/pairs/{id}/activate:
+    put:
+      consumes:
+      - application/json
+      description: Activate Election Pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Activate Election Pair Request
+        in: body
+        name: activateElection
+        required: true
+        schema:
+          $ref: '#/definitions/request.ElectionPairActivationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairActivationResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/pairs/{id}/detail:
+    get:
+      consumes:
+      - application/json
+      description: Get Election Pair Detail
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairDetailResponse'
+              type: object
+      summary: Election Detail
+      tags:
+      - Election-Detail
+  /v1/election/pairs/{id}/detail/program-docs:
+    get:
+      description: Get Election Pair Docs
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/pdf
+      - application/docx
+      responses:
+        "200":
+          description: OK
+      summary: Election Pair Docs
+      tags:
+      - Election-Docs
+  /v1/election/pairs/{id}/full:
+    get:
+      consumes:
+      - application/json
+      description: Get Full Election Pair Data with Details and Supporting Parties
+      parameters:
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairFullResponse'
+              type: object
+      summary: Election
+      tags:
+      - Election
+  /v1/election/pairs/{id}/photo:
+    get:
+      description: Get Election Pair Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: Election Pair Photo
+      tags:
+      - Election-Images
+  /v1/election/pairs/{id}/photo/president:
+    get:
+      description: Get President Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: President Photo
+      tags:
+      - Election-Images
+  /v1/election/pairs/{id}/photo/vice-president:
+    get:
+      description: Get Vice President Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: Vice President Photo
+      tags:
+      - Election-Images
+  /v1/election/pairs/{id}/supporting-parties:
+    get:
+      consumes:
+      - application/json
+      description: Get all supporting parties for an election pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.SupportingPartiesResponse'
+              type: object
+      summary: Get Supporting Parties
+      tags:
+      - Supporting-Party
+  /v1/election/pairs/detail:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Create or Update Election Pair Detail with multiple work programs.
+        For work program photos, use naming convention 'work_program_photo_[index]'
+        where index matches the position in the work_program array.
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Detail Request (JSON String)
+        in: formData
+        name: detail
+        required: true
+        type: string
+      - description: Program Documents (pdf, docx only)
+        in: formData
+        name: program_docs
+        required: true
+        type: file
+      - description: Photos for work programs (jpg, jpeg, png only). Use pattern work_program_photo_0,
+          work_program_photo_1, etc.
+        in: formData
+        name: work_program_photo_*
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairDetailResponse'
+              type: object
+      summary: Create or update election pair details with support for multiple work
+        program photos
+      tags:
+      - Election-Detail
+  /v1/election/pairs/number/{no}:
+    get:
+      consumes:
+      - application/json
+      description: Get Election Pair By Number
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Election Number
         in: path
         name: "no"
         required: true
@@ -126,16 +628,49 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateResponse'
+                  $ref: '#/definitions/response.ElectionPairResponse'
               type: object
       summary: Election
       tags:
       - Election
-  /v1/election/candidates:
-    get:
+  /v1/election/pairs/register:
+    post:
       consumes:
-      - application/json
-      description: Get All Candidate
+      - multipart/form-data
+      description: Register Election Pair (President and Vice President)
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Registration Request (JSON String)
+        in: formData
+        name: pair
+        required: true
+        type: string
+      - description: Pair Photo (jpg, jpeg, png only)
+        in: formData
+        name: pair_photo
+        required: true
+        type: file
+      - description: President Photo (jpg, jpeg, png only)
+        in: formData
+        name: president_photo
+        required: true
+        type: file
+      - description: Vice President Photo (jpg, jpeg, png only)
+        in: formData
+        name: vice_president_photo
+        required: true
+        type: file
       produces:
       - application/json
       responses:
@@ -146,23 +681,68 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateResponse'
+                  $ref: '#/definitions/response.ElectionPairResponse'
               type: object
       summary: Election
       tags:
       - Election
-  /v1/election/register:
+  /v1/election/pairs/supporting-party:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a political party from supporting an election pair
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Remove Supporting Party Request
+        in: body
+        name: supportingParty
+        required: true
+        schema:
+          $ref: '#/definitions/request.RemoveSupportingPartyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.jsonResponse'
+      summary: Remove Supporting Party
+      tags:
+      - Supporting-Party
     post:
       consumes:
       - application/json
-      description: Register Candidate
+      description: Add a political party as a supporting party for an election pair
       parameters:
-      - description: Register Request
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Add Supporting Party Request
         in: body
-        name: candidate
+        name: supportingParty
         required: true
         schema:
-          $ref: '#/definitions/request.CandidateRegistrationRequest'
+          $ref: '#/definitions/request.AddSupportingPartyRequest'
       produces:
       - application/json
       responses:
@@ -173,9 +753,228 @@ paths:
             - $ref: '#/definitions/controller.jsonResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CandidateResponse'
+                  $ref: '#/definitions/response.SupportingPartyResponse'
               type: object
-      summary: Election
+      summary: Add Supporting Party
       tags:
-      - Election
+      - Supporting-Party
+  /v1/party:
+    get:
+      consumes:
+      - application/json
+      description: Get all political parties
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/response.PartyResponse'
+                  type: array
+              type: object
+      summary: Get All Parties
+      tags:
+      - Party
+  /v1/party/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a political party by ID
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.jsonResponse'
+      summary: Party Deletion
+      tags:
+      - Party
+    get:
+      consumes:
+      - application/json
+      description: Get political party by ID
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Get Party
+      tags:
+      - Party
+  /v1/party/{id}/photo:
+    get:
+      description: Get Party Photo
+      parameters:
+      - description: User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Pair ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      responses:
+        "200":
+          description: OK
+      summary: Party Photo
+      tags:
+      - Party-Images
+  /v1/party/register:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Register a new political party with logo upload
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Registration Request (JSON String)
+        in: formData
+        name: party
+        required: true
+        type: string
+      - description: Party Logo (jpg, jpeg, png only)
+        in: formData
+        name: logo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Party Registration
+      tags:
+      - Party
+  /v1/party/update:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update a political party with optional logo upload
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Party Update Request (JSON String)
+        in: formData
+        name: party
+        required: true
+        type: string
+      - description: Party Logo (jpg, jpeg, png only)
+        in: formData
+        name: logo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.PartyResponse'
+              type: object
+      summary: Party Update
+      tags:
+      - Party
 swagger: "2.0"

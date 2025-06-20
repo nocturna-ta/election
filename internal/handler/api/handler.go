@@ -9,8 +9,10 @@ import (
 )
 
 type Options struct {
-	Cfg        config.MainConfig
-	ElectionUc usecases.ElectionUseCases
+	Cfg               config.MainConfig
+	ElectionUc        usecases.ElectionUseCases
+	PartyUc           usecases.PartyUseCases
+	SupportingPartyUc usecases.SupportingPartyUseCases
 }
 
 type Handler struct {
@@ -24,13 +26,15 @@ func New(opts *Options) *Handler {
 		opts: opts,
 	}
 	handler.myRouter = controller.New(&controller.Options{
-		Prefix:         opts.Cfg.API.BasePath,
-		Port:           opts.Cfg.Server.Port,
-		ReadTimeout:    opts.Cfg.Server.ReadTimeout,
-		WriteTimeout:   opts.Cfg.Server.WriteTimeout,
-		RequestTimeout: opts.Cfg.API.APITimeout,
-		EnableSwagger:  opts.Cfg.API.EnableSwagger,
-		ElectionUc:     opts.ElectionUc,
+		Prefix:            opts.Cfg.API.BasePath,
+		Port:              opts.Cfg.Server.Port,
+		ReadTimeout:       opts.Cfg.Server.ReadTimeout,
+		WriteTimeout:      opts.Cfg.Server.WriteTimeout,
+		RequestTimeout:    opts.Cfg.API.APITimeout,
+		EnableSwagger:     opts.Cfg.API.EnableSwagger,
+		ElectionUc:        opts.ElectionUc,
+		PartyUc:           opts.PartyUc,
+		SupportingPartyUc: opts.SupportingPartyUc,
 	}).RegisterRoute()
 	return handler
 }

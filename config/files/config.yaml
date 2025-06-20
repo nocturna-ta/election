@@ -16,10 +16,40 @@ Database:
   MaxConn: 10
   ConnMaxLifetime: 10s
 
+Kafka:
+  Producer:
+    Brokers:
+      - localhost:9092
+    MaxAttempt: 5
+    Idempotent: true
+  Topics:
+    MasterDataElection:
+      Value: "election.masterdata-election"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+    MasterDataParty:
+      Value: "election.masterdata-party"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+    MasterDataSupportingParty:
+      Value: "election.masterdata-supporting-party"
+      ErrorHandler: "Phase1"
+      WithBackOff: true
+
+JWT:
+  Secret: "^87adb2&91hnGaWd7"
+
+GrpcServer:
+  Port: 35000
 
 Encryption:
   Key : "NZkrqmVGg6Bi4QbqGXbH9wz3Q0+NCGvMKA2j8hqD5eM="
 
 BlockchainConfig:
   GanacheURL: "http://127.0.0.1:7545"
-  ContractAddress: "0xE8Bb4a8F1B7e7bE417fbf00B5d238524A482e092"
+  VotechainAddress: "0xd39E794BCde9ddcE14f9Cd6E4eE4d319FeD1A5Ea"
+  ElectionManagerAddress: "0x996d0bE4F81CBA4EaB39Ec0380B048E95D71e2B4"
+  KPUManagerAddress: "0x15D340a739958950Aa8D9Ccb1BA2609f21B537a1"
+  VoterManagerAddress: "0x8c43Cea2fE39635De63893e45A072B8fD73a1be7"
+  VotechainBaseAddress: "0xB1aDFD125A736f17Fc8914c993698934BA834B13"
+

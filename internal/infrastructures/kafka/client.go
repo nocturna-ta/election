@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/nocturna-ta/election/config"
 	"github.com/nocturna-ta/golib/event"
+	_ "github.com/nocturna-ta/golib/event/kafka"
 )
 
 func NewPublisher(ctx context.Context, config config.KafkaProducerConfig) (event.MessagePublisher, error) {

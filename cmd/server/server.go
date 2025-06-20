@@ -1,9 +1,11 @@
 package server
 
 import (
-	"github.com/ethereum/go-ethereum/ethclient"
+	"context"
 	"github.com/nocturna-ta/election/config"
+	"github.com/nocturna-ta/election/ethereum"
 	"github.com/nocturna-ta/election/internal/handler/api"
+	"github.com/nocturna-ta/election/internal/infrastructures/kafka"
 	"github.com/nocturna-ta/golib/database/sql"
 	"github.com/nocturna-ta/golib/log"
 	"github.com/spf13/cobra"
@@ -15,8 +17,8 @@ import (
 var (
 	serverHTTPCmd = &cobra.Command{
 		Use:   "server-http",
-		Short: "Blockchain Service HTTP",
-		Long:  "Blockchain Service HTTP",
+		Short: "Election Service HTTP",
+		Long:  "Election Service HTTP",
 		RunE:  run,
 	}
 )
@@ -39,20 +41,31 @@ func run(cmd *cobra.Command, args []string) error {
 		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	}, sql.DriverPostgres)
 
-	client, err := ethclient.Dial(cfg.Blockchain.GanacheURL)
+	client, err := ethereum.GetEthereumClient(&cfg.Blockchain)
 	if err != nil {
 		return err
 	}
 
+	defer client.Close()
+
+	publisher, err := kafka.NewPublisher(context.Background(), cfg.Kafka.Producer)
+	if err != nil {
+		log.Fatal("Failed to instantiate kafka producer")
+		return err
+	}
+
 	appContainer := newContainer(&options{
-		Cfg:    cfg,
-		DB:     database,
-		Client: client,
+		Cfg:       cfg,
+		DB:        database,
+		Client:    client,
+		Publisher: publisher,
 	})
 
 	server := api.New(&api.Options{
-		Cfg:        appContainer.Cfg,
-		ElectionUc: appContainer.ElectionUC,
+		Cfg:               appContainer.Cfg,
+		ElectionUc:        appContainer.ElectionUc,
+		PartyUc:           appContainer.PartyUc,
+		SupportingPartyUc: appContainer.SupportingPartyUc,
 	})
 
 	go server.Run()

@@ -22,4 +22,6 @@
 # Go workspace file
 go.work
 
+uploads/
+
 

@@ -1,27 +1,85 @@
-CREATE TABLE "candidates"(
-    id uuid NOT NULL PRIMARY KEY,
-    name_candidate varchar(255) NOT NULL,
-    election_no int NOT NULL,
-    is_active boolean NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT now(),
-    is_deleted bool NOT NULL DEFAULT FALSE
+CREATE TABLE IF NOT EXISTS "parties" (
+    id UUID NOT NULL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    logo_path VARCHAR(512),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+    );
+
+-- Table for election pairs (president and vice president)
+CREATE TABLE IF NOT EXISTS "election_pairs" (
+    id UUID NOT NULL PRIMARY KEY,
+    election_no VARCHAR(20) NOT NULL UNIQUE,
+    vote_count INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    pair_photo_path VARCHAR(512),
+    pair_name VARCHAR(255) NOT NULL,
+
+    -- President candidate info
+    president_full_name VARCHAR(255) NOT NULL,
+    president_education_history JSONB,
+    president_work_experience JSONB,
+    president_gender VARCHAR(50) NOT NULL,
+    president_birth_place VARCHAR(255) NOT NULL,
+    president_birth_date VARCHAR(20) NOT NULL,
+    president_last_education VARCHAR(100) NOT NULL,
+    president_job VARCHAR(255) NOT NULL,
+    president_photo_path VARCHAR(512),
+
+    -- Vice president candidate info
+    vice_president_full_name VARCHAR(255) NOT NULL,
+    vice_president_education_history JSONB,
+    vice_president_work_experience JSONB,
+    vice_president_gender VARCHAR(50) NOT NULL,
+    vice_president_birth_place VARCHAR(255) NOT NULL,
+    vice_president_birth_date VARCHAR(20) NOT NULL,
+    vice_president_last_education VARCHAR(100) NOT NULL,
+    vice_president_job VARCHAR(255) NOT NULL,
+    vice_president_photo_path VARCHAR(512),
+
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+    );
+
+-- Table for vision, mission, and work programs
+CREATE TABLE IF NOT EXISTS "election_pair_details" (
+    id UUID NOT NULL PRIMARY KEY,
+    election_pair_id UUID NOT NULL REFERENCES election_pairs(id) ON DELETE CASCADE,
+    vision TEXT,
+    mission TEXT,
+    work_program JSONB,
+    work_program_docs TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT uq_pair_details UNIQUE(election_pair_id, is_deleted)
+    );
+
+
+-- Table for supporting parties (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS "supporting_parties" (
+    id UUID NOT NULL PRIMARY KEY,
+    election_pair_id UUID NOT NULL REFERENCES election_pairs(id) ON DELETE CASCADE,
+    party_id UUID NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT uq_supporting_party UNIQUE(election_pair_id, party_id, is_deleted)
 );
 
-CREATE TABLE "candidate_detail" (
-    id uuid NOT NULL PRIMARY KEY,
-    candidate_id uuid NOT NULL,
-    biodata text NOT NULL,
-    visi text NOT NULL,
-    misi text NOT NULL,
-    program_kerja text NOT NULL,
-    created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP(6) WITH TIME ZONE NOT NULL DEFAULT now(),
-    is_deleted bool NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (candidate_id) REFERENCES elections(id) ON DELETE CASCADE ON UPDATE CASCADE
-)
 
-CREATE TABLE "partai"(
-    id uuid NOT NULL PRIMARY KEY,
-    name varchar(255) NOT NULL,
-)
+
+-- Indexes for better query performance
+CREATE INDEX idx_election_pairs_election_no ON election_pairs(election_no);
+CREATE INDEX idx_election_pairs_is_active ON election_pairs(is_active) WHERE is_deleted = FALSE;
+CREATE INDEX idx_supporting_parties_election_pair_id ON supporting_parties(election_pair_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_supporting_parties_party_id ON supporting_parties(party_id) WHERE is_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_president_education ON election_pairs USING GIN (president_education_history);
+CREATE INDEX IF NOT EXISTS idx_president_work ON election_pairs USING GIN (president_work_experience);
+CREATE INDEX IF NOT EXISTS idx_vice_president_education ON election_pairs USING GIN (vice_president_education_history);
+CREATE INDEX IF NOT EXISTS idx_vice_president_work ON election_pairs USING GIN (vice_president_work_experience);
