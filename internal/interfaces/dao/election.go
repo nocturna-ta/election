@@ -194,6 +194,127 @@ func (e *ElectionRepository) InsertElectionPair(ctx context.Context, pair *model
 	return nil
 }
 
+func (e *ElectionRepository) UpdateElectionPair(ctx context.Context, pair *model.ElectionPair) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.UpdateElectionPair")
+	defer span.End()
+
+	sqlTrx := utils.GetSqlTx(ctx)
+	var (
+		err    error
+		args   []any
+		result sql2.Result
+	)
+
+	presidentEducationJSON, err := json.Marshal(pair.President.EducationHistory)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to marshal president education history")
+		return err
+	}
+
+	presidentWorkJSON, err := json.Marshal(pair.President.WorkExperience)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to marshal president work experience")
+		return err
+	}
+
+	vicePresidentEducationJSON, err := json.Marshal(pair.VicePresident.EducationHistory)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to marshal vice president education history")
+		return err
+	}
+
+	vicePresidentWorkJSON, err := json.Marshal(pair.VicePresident.WorkExperience)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to marshal vice president work experience")
+		return err
+	}
+
+	updateQuery := `election_no = $2,
+			pair_name = $3,
+			pair_photo_path = $4,
+			president_full_name = $5,
+			president_education_history = $6,
+			president_work_experience = $7,
+			president_gender = $8,
+			president_birth_place = $9,
+			president_birth_date = $10,
+			president_last_education = $11,
+			president_job = $12,
+			president_photo_path = $13,
+			vice_president_full_name = $14,
+			vice_president_education_history = $15,
+			vice_president_work_experience = $16,
+			vice_president_gender = $17,
+			vice_president_birth_place = $18,
+			vice_president_birth_date = $19,
+			vice_president_last_education = $20,
+			vice_president_job = $21,
+			vice_president_photo_path = $22,
+			updated_at = $23`
+
+	whereQuery := ` AND id = $1 AND is_deleted = false`
+
+	args = append(args, pair.ID, pair.ElectionNo, pair.PairName, pair.PairPhotoPath,
+		pair.President.FullName,
+		presidentEducationJSON,
+		presidentWorkJSON,
+		pair.President.Gender,
+		pair.President.BirthPlace,
+		pair.President.BirthDate,
+		pair.President.LastEducation,
+		pair.President.Job,
+		pair.President.PhotoPath,
+		pair.VicePresident.FullName,
+		vicePresidentEducationJSON,
+		vicePresidentWorkJSON,
+		pair.VicePresident.Gender,
+		pair.VicePresident.BirthPlace,
+		pair.VicePresident.BirthDate,
+		pair.VicePresident.LastEducation,
+		pair.VicePresident.Job,
+		pair.VicePresident.PhotoPath,
+		pair.UpdatedAt)
+
+	query := fmt.Sprintf(updateElectionPair, updateQuery, whereQuery)
+
+	if sqlTrx != nil {
+		result, err = sqlTrx.ExecContext(ctx, query, args...)
+	} else {
+		result, err = e.db.GetMaster().ExecContext(ctx, query, args...)
+	}
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"pair":  pair,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to update election pair")
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+			"pair":  pair,
+		}).ErrorWithCtx(ctx, "[ElectionRepository.UpdateElectionPair] Failed to get rows affected")
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrNoUpdateHappened
+	}
+
+	return nil
+}
+
 func (e *ElectionRepository) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*model.ElectionPair, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionRepository.GetElectionPairByID")
 	defer span.End()

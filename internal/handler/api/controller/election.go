@@ -332,8 +332,7 @@ func (api *API) UpsertElectionPairDetail(ctx context.Context, req *router.Reques
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
 // @Param       id path string true "Election Pair ID"
-// @Produce     image/jpeg
-// @Produce     image/png
+// @Produce octet-stream
 // @Success     200
 // @Router      /v1/election/pairs/{id}/photo [get]
 func (api *API) GetElectionPairPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
@@ -365,8 +364,7 @@ func (api *API) GetElectionPairPhoto(ctx context.Context, req *router.Request) (
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
 // @Param       id path string true "Election Pair ID"
-// @Produce     image/jpeg
-// @Produce     image/png
+// @Produce octet-stream
 // @Success     200
 // @Router      /v1/election/pairs/{id}/photo/president [get]
 func (api *API) GetPresidentPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
@@ -398,8 +396,7 @@ func (api *API) GetPresidentPhoto(ctx context.Context, req *router.Request) (*re
 // @Param X-Address-Id header string false "Address"
 // @Param X-Role header string false "Role"
 // @Param       id path string true "Election Pair ID"
-// @Produce     image/jpeg
-// @Produce     image/png
+// @Produce octet-stream
 // @Success     200
 // @Router      /v1/election/pairs/{id}/photo/vice-president [get]
 func (api *API) GetVicePresidentPhoto(ctx context.Context, req *router.Request) (*rest.AttachmentResponse, error) {
@@ -515,4 +512,80 @@ func (api *API) GetElectionProgramDocs(ctx context.Context, req *router.Request)
 	}
 
 	return rest.NewAttachmentResponse().SetFile(file).SetFileName(file.FileName).SetContentType(contentType), nil
+}
+
+// UpdateElectionPair godoc
+// @Summary 	Election Update
+// @Description	Update Election Pair (President and Vice President)
+// @Tags		Election
+// @Accept 		multipart/form-data
+// @Param 		X-User-Id header string false "Authorized User"
+// @Param 		X-Address-Id header string false "Authorized Address"
+// @Param 		X-Role header string false "Authorized Role"
+// @Param 		pair formData string true  "Update Request (JSON String)"
+// @Param 		pair_photo formData file false "Pair Photo (jpg, jpeg, png only)"
+// @Param 		president_photo formData file false "President Photo (jpg, jpeg, png only)"
+// @Param 		vice_president_photo formData file false "Vice President Photo (jpg, jpeg, png only)"
+// @Produce		json
+// @Success		200	{object}	jsonResponse{data=response.ElectionPairResponse}
+// @Router		/v1/election/pairs/update	[put]
+func (api *API) UpdateElectionPair(ctx context.Context, req *router.Request) (*rest.JSONResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Controller.UpdateElectionPair")
+	defer span.End()
+
+	form, err := req.RawRequest().MultipartForm()
+	if err != nil {
+		return cutresp.CustomErrorResponse(&custerr.ErrChain{
+			Message: "Failed to parse multipart form",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		})
+	}
+
+	fileConfigs := []utils.FileUploadConfig{
+		{
+			FieldName:  "pair_photo",
+			Required:   false,
+			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for pair photo. Only JPG, JPEG, and PNG files are allowed",
+			},
+		},
+		{
+			FieldName:  "president_photo",
+			Required:   false,
+			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for president photo. Only JPG, JPEG, and PNG files are allowed",
+			},
+		},
+		{
+			FieldName:  "vice_president_photo",
+			Required:   false,
+			UploadFunc: filehandler.ImageUploadOptions,
+			ErrorMsgs: map[error]string{
+				filehandler.ErrInvalidFileFormat: "Invalid file format for vice president photo. Only JPG, JPEG, and PNG files are allowed",
+			},
+		},
+	}
+
+	uploadedFiles, err := utils.ProcessFileUploads(ctx, form, fileConfigs)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	defer utils.CloseFiles(uploadedFiles)
+
+	updateRequest, err := utils.ParseUpdateRequest(form, uploadedFiles)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	res, err := api.electionUc.UpdateElectionPair(ctx, updateRequest)
+	if err != nil {
+		return cutresp.CustomErrorResponse(err)
+	}
+
+	return rest.NewJSONResponse().SetData(res), nil
 }

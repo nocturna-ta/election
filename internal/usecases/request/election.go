@@ -58,6 +58,17 @@ type WorkProgramRequest struct {
 	ProgramDesc      []string  `json:"program_desc"`
 }
 
+type ElectionPairUpdateRequest struct {
+	ID            string               `json:"id"`
+	ElectionNo    string               `json:"election_no"`
+	PairName      string               `json:"pair_name"`
+	PairPhotoPath string               `json:"pair_photo_path"`
+	PairPhotoFile io.Reader            `json:"-" swaggerignore:"true"`
+	PairPhotoName string               `json:"-" swaggerignore:"true"`
+	President     CandidateInfoRequest `json:"president"`
+	VicePresident CandidateInfoRequest `json:"vice_president"`
+}
+
 type ElectionPairDetailRequest struct {
 	ElectionPairID  string               `json:"election_pair_id"`
 	Vision          string               `json:"vision"`
@@ -124,6 +135,50 @@ func (req *ElectionPairDetailRequest) ValidateDetailRequest() error {
 	if req == nil {
 		return &custerr.ErrChain{
 			Message: "Request cannot be nil",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	return nil
+}
+
+func (req *ElectionPairUpdateRequest) ValidateUpdateRequest() error {
+	if req == nil {
+		return &custerr.ErrChain{
+			Message: "Request cannot be nil",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if common.IsNotUUID(req.ID) {
+		return &custerr.ErrChain{
+			Message: "ID is not a valid UUID",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if req.ElectionNo == "" {
+		return &custerr.ErrChain{
+			Message: "Election number cannot be empty",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if req.President.FullName == "" {
+		return &custerr.ErrChain{
+			Message: "President candidate name cannot be empty",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	if req.VicePresident.FullName == "" {
+		return &custerr.ErrChain{
+			Message: "Vice President candidate name cannot be empty",
 			Code:    400,
 			Type:    response.ErrBadRequest,
 		}

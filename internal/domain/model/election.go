@@ -154,3 +154,77 @@ func ConstructPairDetail(req *request.ElectionPairDetailRequest) *PairDetail {
 
 	return detail
 }
+
+func ConstructUpdateElectionPairFromRequest(existing *ElectionPair, req *request.ElectionPairUpdateRequest) *ElectionPair {
+	now := time.Now()
+
+	presidentEducationHistory := make([]EducationHistory, len(req.President.EducationHistory))
+	for i, eh := range req.President.EducationHistory {
+		presidentEducationHistory[i] = EducationHistory{
+			InstituteName: eh.InstituteName,
+			Year:          eh.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]WorkHistory, len(req.President.WorkExperience))
+	for i, wh := range req.President.WorkExperience {
+		presidentWorkExperience[i] = WorkHistory{
+			InstituteName: wh.InstituteName,
+			Position:      wh.Position,
+			Year:          wh.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]EducationHistory, len(req.VicePresident.EducationHistory))
+	for i, eh := range req.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = EducationHistory{
+			InstituteName: eh.InstituteName,
+			Year:          eh.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]WorkHistory, len(req.VicePresident.WorkExperience))
+	for i, wh := range req.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = WorkHistory{
+			InstituteName: wh.InstituteName,
+			Position:      wh.Position,
+			Year:          wh.Year,
+		}
+	}
+
+	president := &CandidateInfo{
+		FullName:         req.President.FullName,
+		EducationHistory: presidentEducationHistory,
+		WorkExperience:   presidentWorkExperience,
+		Gender:           req.President.Gender,
+		BirthPlace:       req.President.BirthPlace,
+		BirthDate:        req.President.BirthDate,
+		Religion:         req.President.Religion,
+		LastEducation:    req.President.LastEducation,
+		Job:              req.President.Job,
+		PhotoPath:        req.President.PhotoPath,
+	}
+
+	vicePresident := &CandidateInfo{
+		FullName:         req.VicePresident.FullName,
+		EducationHistory: vicePresidentEducationHistory,
+		WorkExperience:   vicePresidentWorkExperience,
+		Gender:           req.VicePresident.Gender,
+		BirthPlace:       req.VicePresident.BirthPlace,
+		BirthDate:        req.VicePresident.BirthDate,
+		Religion:         req.VicePresident.Religion,
+		LastEducation:    req.VicePresident.LastEducation,
+		Job:              req.VicePresident.Job,
+		PhotoPath:        req.VicePresident.PhotoPath,
+	}
+
+	// Update the existing election pair with new data
+	existing.ElectionNo = req.ElectionNo
+	existing.PairName = req.PairName
+	existing.PairPhotoPath = req.PairPhotoPath
+	existing.President = president
+	existing.VicePresident = vicePresident
+	existing.UpdatedAt = now
+
+	return existing
+}

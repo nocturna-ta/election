@@ -431,6 +431,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/election/pairs/update": {
+            "put": {
+                "description": "Update Election Pair (President and Vice President)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Election"
+                ],
+                "summary": "Election Update",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorized User",
+                        "name": "X-User-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Address",
+                        "name": "X-Address-Id",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorized Role",
+                        "name": "X-Role",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Update Request (JSON String)",
+                        "name": "pair",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Pair Photo (jpg, jpeg, png only)",
+                        "name": "pair_photo",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "President Photo (jpg, jpeg, png only)",
+                        "name": "president_photo",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Vice President Photo (jpg, jpeg, png only)",
+                        "name": "vice_president_photo",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/controller.jsonResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.ElectionPairResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/election/pairs/{id}": {
             "get": {
                 "description": "Get Election Pair By ID",

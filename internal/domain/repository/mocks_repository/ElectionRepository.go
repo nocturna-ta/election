@@ -200,6 +200,24 @@ func (_m *ElectionRepository) SendTxToBlockchain(ctx context.Context, signedTran
 	return r0, r1
 }
 
+// UpdateElectionPair provides a mock function with given fields: ctx, pair
+func (_m *ElectionRepository) UpdateElectionPair(ctx context.Context, pair *model.ElectionPair) error {
+	ret := _m.Called(ctx, pair)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateElectionPair")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *model.ElectionPair) error); ok {
+		r0 = rf(ctx, pair)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateElectionPairPhoto provides a mock function with given fields: ctx, id, photoPath
 func (_m *ElectionRepository) UpdateElectionPairPhoto(ctx context.Context, id uuid.UUID, photoPath string) error {
 	ret := _m.Called(ctx, id, photoPath)

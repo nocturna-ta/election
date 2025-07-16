@@ -204,6 +204,236 @@ func (m *Module) RegisterElectionPair(ctx context.Context, req *request.Election
 	}, err
 }
 
+func (m *Module) UpdateElectionPair(ctx context.Context, req *request.ElectionPairUpdateRequest) (*response.ElectionPairResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.UpdateElectionPair")
+	defer span.End()
+
+	var (
+		updatedElectionPair *model.ElectionPair
+		err                 error
+	)
+
+	pairID, err := uuid.Parse(req.ID)
+	if err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid election pair ID format",
+			Cause:   err,
+			Code:    400,
+			Type:    response2.ErrBadRequest,
+		}
+	}
+
+	transaction := func(txCtx context.Context) (any, error) {
+		existing, errTx := m.electionRepo.GetElectionPairByID(txCtx, pairID)
+		if errTx != nil {
+			if errors.Is(errTx, dao.ErrNoResult) {
+				return nil, &custerr.ErrChain{
+					Message: "Election Pair not found",
+					Cause:   errTx,
+					Code:    404,
+					Type:    response2.ErrNotFound,
+				}
+			}
+			log.WithFields(log.Fields{
+				"error": errTx,
+				"id":    pairID,
+			}).ErrorWithCtx(ctx, "[ElectionUseCases.UpdateElectionPair] failed to get election pair by id")
+			return nil, errTx
+		}
+
+		oldPairPhotoPath := existing.PairPhotoPath
+		oldPresidentPhotoPath := existing.President.PhotoPath
+		oldVicePresidentPhotoPath := existing.VicePresident.PhotoPath
+
+		updatedElectionPair = model.ConstructUpdateElectionPairFromRequest(existing, req)
+
+		newlyStoredFiles := make([]string, 0)
+
+		if req.PairPhotoFile != nil {
+			fileConfigPairPhoto := fileutils.DefaultConfig()
+			fileConfigPairPhoto.SetAllowedImageExtension()
+			fileConfigPairPhoto.EntityType = "election_pair"
+
+			photoPathPair, errTx := fileutils.StoreFile(txCtx, req.PairPhotoFile, req.PairPhotoName, fileConfigPairPhoto)
+			if errTx != nil {
+				log.WithFields(log.Fields{
+					"error": errTx,
+				}).ErrorWithCtx(ctx, "[ElectionUseCases.UpdateElectionPair] failed to store pair photo")
+				return nil, &custerr.ErrChain{
+					Message: "Failed to store pair photo",
+					Cause:   errTx,
+					Code:    500,
+					Type:    response2.ErrInternalServerError,
+				}
+			}
+			updatedElectionPair.PairPhotoPath = photoPathPair
+			newlyStoredFiles = append(newlyStoredFiles, photoPathPair)
+		}
+		if req.President.PhotoFile != nil {
+			fileConfigPresident := fileutils.DefaultConfig()
+			fileConfigPresident.SetAllowedImageExtension()
+			fileConfigPresident.EntityType = "election_pair"
+
+			presidentPhoto, errTx := fileutils.StoreFile(txCtx, req.President.PhotoFile, req.President.PhotoName, fileConfigPresident)
+			if errTx != nil {
+				// Clean up any newly stored files
+				for _, path := range newlyStoredFiles {
+					_ = fileutils.DeleteFile(txCtx, path)
+				}
+				log.WithFields(log.Fields{
+					"error": errTx,
+				}).ErrorWithCtx(txCtx, "[ElectionUseCases.UpdateElectionPair] failed to store president photo")
+				return nil, &custerr.ErrChain{
+					Message: "Failed to store president photo",
+					Cause:   errTx,
+					Code:    500,
+					Type:    response2.ErrInternalServerError,
+				}
+			}
+			updatedElectionPair.President.PhotoPath = presidentPhoto
+			newlyStoredFiles = append(newlyStoredFiles, presidentPhoto)
+		}
+
+		if req.VicePresident.PhotoFile != nil {
+			fileConfigVicePresident := fileutils.DefaultConfig()
+			fileConfigVicePresident.SetAllowedImageExtension()
+			fileConfigVicePresident.EntityType = "election_pair"
+
+			vicePresidentPhoto, errTx := fileutils.StoreFile(txCtx, req.VicePresident.PhotoFile, req.VicePresident.PhotoName, fileConfigVicePresident)
+			if errTx != nil {
+				// Clean up any newly stored files
+				for _, path := range newlyStoredFiles {
+					_ = fileutils.DeleteFile(txCtx, path)
+				}
+				log.WithFields(log.Fields{
+					"error": errTx,
+				}).ErrorWithCtx(txCtx, "[ElectionUseCases.UpdateElectionPair] failed to store vice president photo")
+				return nil, &custerr.ErrChain{
+					Message: "Failed to store vice president photo",
+					Cause:   errTx,
+					Code:    500,
+					Type:    response2.ErrInternalServerError,
+				}
+			}
+			updatedElectionPair.VicePresident.PhotoPath = vicePresidentPhoto
+			newlyStoredFiles = append(newlyStoredFiles, vicePresidentPhoto)
+		}
+
+		// Update in database
+		errTx = m.electionRepo.UpdateElectionPair(txCtx, updatedElectionPair)
+		if errTx != nil {
+			// Clean up any newly stored files
+			for _, path := range newlyStoredFiles {
+				_ = fileutils.DeleteFile(txCtx, path)
+			}
+
+			if errors.Is(errTx, dao.ErrDuplicate) {
+				return nil, &custerr.ErrChain{
+					Message: "Election pair with this election number already exists",
+					Cause:   errTx,
+					Code:    400,
+					Type:    response2.ErrBadRequest,
+				}
+			}
+			return nil, errTx
+		}
+
+		// Clean up old photo files if new ones were uploaded
+		if req.PairPhotoFile != nil && oldPairPhotoPath != "" && oldPairPhotoPath != updatedElectionPair.PairPhotoPath {
+			_ = fileutils.DeleteFile(txCtx, oldPairPhotoPath)
+		}
+		if req.President.PhotoFile != nil && oldPresidentPhotoPath != "" && oldPresidentPhotoPath != updatedElectionPair.President.PhotoPath {
+			_ = fileutils.DeleteFile(txCtx, oldPresidentPhotoPath)
+		}
+		if req.VicePresident.PhotoFile != nil && oldVicePresidentPhotoPath != "" && oldVicePresidentPhotoPath != updatedElectionPair.VicePresident.PhotoPath {
+			_ = fileutils.DeleteFile(txCtx, oldVicePresidentPhotoPath)
+		}
+
+		// Publish update event
+		errTx = m.publisher.Publish(txCtx, m.topics.MasterDataElection.Value, updatedElectionPair.ID.String(), updatedElectionPair.ToMessageModel(""), map[string]any{
+			constants.MetaDataOperation: constants.Update,
+		})
+		if errTx != nil {
+			return nil, errTx
+		}
+
+		return nil, nil
+	}
+
+	_, err = m.txMgr.Execute(ctx, transaction, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to response
+	presidentEducationHistory := make([]response.EducationHistoryResponse, len(updatedElectionPair.President.EducationHistory))
+	for i, history := range updatedElectionPair.President.EducationHistory {
+		presidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	presidentWorkExperience := make([]response.WorkHistoryResponse, len(updatedElectionPair.President.WorkExperience))
+	for i, history := range updatedElectionPair.President.WorkExperience {
+		presidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentEducationHistory := make([]response.EducationHistoryResponse, len(updatedElectionPair.VicePresident.EducationHistory))
+	for i, history := range updatedElectionPair.VicePresident.EducationHistory {
+		vicePresidentEducationHistory[i] = response.EducationHistoryResponse{
+			InstituteName: history.InstituteName,
+			Year:          history.Year,
+		}
+	}
+
+	vicePresidentWorkExperience := make([]response.WorkHistoryResponse, len(updatedElectionPair.VicePresident.WorkExperience))
+	for i, history := range updatedElectionPair.VicePresident.WorkExperience {
+		vicePresidentWorkExperience[i] = response.WorkHistoryResponse{
+			InstituteName: history.InstituteName,
+			Position:      history.Position,
+			Year:          history.Year,
+		}
+	}
+
+	return &response.ElectionPairResponse{
+		ID:            updatedElectionPair.ID.String(),
+		ElectionNo:    updatedElectionPair.ElectionNo,
+		VoteCount:     updatedElectionPair.VoteCount,
+		IsActive:      updatedElectionPair.IsActive,
+		PairName:      updatedElectionPair.PairName,
+		PairPhotoPath: updatedElectionPair.PairPhotoPath,
+		President: response.CandidateInfoResponse{
+			FullName:         updatedElectionPair.President.FullName,
+			EducationHistory: presidentEducationHistory,
+			WorkExperience:   presidentWorkExperience,
+			Gender:           updatedElectionPair.President.Gender,
+			BirthPlace:       updatedElectionPair.President.BirthPlace,
+			BirthDate:        updatedElectionPair.President.BirthDate,
+			Religion:         updatedElectionPair.President.Religion,
+			LastEducation:    updatedElectionPair.President.LastEducation,
+			Job:              updatedElectionPair.President.Job,
+			PhotoPath:        updatedElectionPair.President.PhotoPath,
+		},
+		VicePresident: response.CandidateInfoResponse{
+			FullName:         updatedElectionPair.VicePresident.FullName,
+			EducationHistory: vicePresidentEducationHistory,
+			WorkExperience:   vicePresidentWorkExperience,
+			Gender:           updatedElectionPair.VicePresident.Gender,
+			BirthPlace:       updatedElectionPair.VicePresident.BirthPlace,
+			BirthDate:        updatedElectionPair.VicePresident.BirthDate,
+			Religion:         updatedElectionPair.VicePresident.Religion,
+			LastEducation:    updatedElectionPair.VicePresident.LastEducation,
+			Job:              updatedElectionPair.VicePresident.Job,
+			PhotoPath:        updatedElectionPair.VicePresident.PhotoPath,
+		},
+	}, nil
+}
+
 func (m *Module) GetElectionPairByID(ctx context.Context, id uuid.UUID) (*response.ElectionPairResponse, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ElectionUseCases.GetElectionPairByID")
 	defer span.End()
@@ -844,22 +1074,23 @@ func (m *Module) GetElectionPairDetail(ctx context.Context, pairID uuid.UUID) (*
 	defer span.End()
 
 	detail, err := m.electionRepo.GetPairDetailByPairID(ctx, pairID)
+
 	if err != nil {
-		if errors.Is(err, dao.ErrNoResult) {
-			return nil, &custerr.ErrChain{
-				Message: "Election Pair Detail not found",
-				Cause:   err,
-				Code:    404,
-				Type:    response2.ErrNotFound,
-			}
-		}
 		log.WithFields(log.Fields{
 			"error": err,
 			"id":    pairID,
 		}).ErrorWithCtx(ctx, "[ElectionUseCases.GetElectionPairDetail] failed to get election pair detail")
-		return nil, err
 	}
-
+	if detail == nil {
+		detail = &model.PairDetail{
+			ID:             uuid.Nil,
+			ElectionPairID: pairID,
+			Vision:         "",
+			Mission:        "",
+			WorkProgram:    nil,
+			ProgramDocs:    "",
+		}
+	}
 	workProgram := make([]response.WorkProgramResponse, len(detail.WorkProgram))
 	for i, program := range detail.WorkProgram {
 		workProgram[i] = response.WorkProgramResponse{
@@ -1012,6 +1243,16 @@ func (m *Module) GetElectionPairFull(ctx context.Context, id uuid.UUID) (*respon
 
 	detailResp, err := m.GetElectionPairDetail(ctx, id)
 	if err == nil {
+		if detailResp == nil {
+			detailResp = &response.ElectionPairDetailResponse{
+				ID:             "",
+				ElectionPairID: id.String(),
+				Vision:         "",
+				Mission:        "",
+				WorkProgram:    nil,
+				ProgramDocs:    "",
+			}
+		}
 		fullResp.Detail = *detailResp
 	} else if !errors.Is(err, dao.ErrNoResult) {
 		log.WithFields(log.Fields{

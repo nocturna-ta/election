@@ -8,7 +8,7 @@ swag-init:
 
 run-api: dependency swag-init
 	@echo ">> Running API Server"
-	@go run main.go server-http
+	@go run main.go serve-http
 
 migrate-up:
 	@echo ">> Running Migrate Up"

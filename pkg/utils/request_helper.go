@@ -173,3 +173,46 @@ func ParsePartyUpdateRequest(form *multipart.Form, files map[string]UploadedFile
 
 	return &updateReq, nil
 }
+
+func ParseUpdateRequest(form *multipart.Form, files map[string]UploadedFile) (*request.ElectionPairUpdateRequest, error) {
+	pairValues := form.Value["pair"]
+	if len(pairValues) == 0 {
+		return nil, &custerr.ErrChain{
+			Message: "Missing update request data in 'pair' field",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+		}
+	}
+
+	pairJSON := pairValues[0]
+	var updateReq request.ElectionPairUpdateRequest
+	if err := json.Unmarshal([]byte(pairJSON), &updateReq); err != nil {
+		return nil, &custerr.ErrChain{
+			Message: "Invalid JSON in update request",
+			Code:    400,
+			Type:    response.ErrBadRequest,
+			Cause:   err,
+		}
+	}
+
+	if err := updateReq.ValidateUpdateRequest(); err != nil {
+		return nil, err
+	}
+
+	if pairPhoto, exists := files["pair_photo"]; exists {
+		updateReq.PairPhotoName = pairPhoto.OriginalFilename
+		updateReq.PairPhotoFile = pairPhoto.File
+	}
+
+	if presidentPhoto, exists := files["president_photo"]; exists {
+		updateReq.President.PhotoName = presidentPhoto.OriginalFilename
+		updateReq.President.PhotoFile = presidentPhoto.File
+	}
+
+	if vicePresidentPhoto, exists := files["vice_president_photo"]; exists {
+		updateReq.VicePresident.PhotoName = vicePresidentPhoto.OriginalFilename
+		updateReq.VicePresident.PhotoFile = vicePresidentPhoto.File
+	}
+
+	return &updateReq, nil
+}

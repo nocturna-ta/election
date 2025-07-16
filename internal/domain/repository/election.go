@@ -8,6 +8,7 @@ import (
 
 type ElectionRepository interface {
 	InsertElectionPair(ctx context.Context, pair *model.ElectionPair) error
+	UpdateElectionPair(ctx context.Context, pair *model.ElectionPair) error
 	GetElectionPairByID(ctx context.Context, id uuid.UUID) (*model.ElectionPair, error)
 	GetElectionPairByNo(ctx context.Context, no string) (*model.ElectionPair, error)
 	GetAllElectionPairs(ctx context.Context) ([]model.ElectionPair, error)

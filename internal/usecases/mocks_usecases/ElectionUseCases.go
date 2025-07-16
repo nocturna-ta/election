@@ -51,23 +51,23 @@ func (_m *ElectionUseCases) ActivateElectionPair(ctx context.Context, req *reque
 }
 
 // GetAllElectionPairs provides a mock function with given fields: ctx
-func (_m *ElectionUseCases) GetAllElectionPairs(ctx context.Context) (*response.ElectionPairListResponse, error) {
+func (_m *ElectionUseCases) GetAllElectionPairs(ctx context.Context) (*[]response.ElectionPairFullResponse, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllElectionPairs")
 	}
 
-	var r0 *response.ElectionPairListResponse
+	var r0 *[]response.ElectionPairFullResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*response.ElectionPairListResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (*[]response.ElectionPairFullResponse, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) *response.ElectionPairListResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *[]response.ElectionPairFullResponse); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*response.ElectionPairListResponse)
+			r0 = ret.Get(0).(*[]response.ElectionPairFullResponse)
 		}
 	}
 
@@ -311,6 +311,43 @@ func (_m *ElectionUseCases) GetVicePresidentPhoto(ctx context.Context, id uuid.U
 	return r0, r1, r2
 }
 
+// GetWorkProgramFile provides a mock function with given fields: ctx, id
+func (_m *ElectionUseCases) GetWorkProgramFile(ctx context.Context, id uuid.UUID) (*http.File, string, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetWorkProgramFile")
+	}
+
+	var r0 *http.File
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*http.File, string, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *http.File); ok {
+		r0 = rf(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*http.File)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) string); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Get(1).(string)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, uuid.UUID) error); ok {
+		r2 = rf(ctx, id)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // RegisterElectionPair provides a mock function with given fields: ctx, req
 func (_m *ElectionUseCases) RegisterElectionPair(ctx context.Context, req *request.ElectionPairRegistrationRequest) (*response.ElectionPairResponse, error) {
 	ret := _m.Called(ctx, req)
@@ -333,6 +370,36 @@ func (_m *ElectionUseCases) RegisterElectionPair(ctx context.Context, req *reque
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, *request.ElectionPairRegistrationRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateElectionPair provides a mock function with given fields: ctx, req
+func (_m *ElectionUseCases) UpdateElectionPair(ctx context.Context, req *request.ElectionPairUpdateRequest) (*response.ElectionPairResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateElectionPair")
+	}
+
+	var r0 *response.ElectionPairResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *request.ElectionPairUpdateRequest) (*response.ElectionPairResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *request.ElectionPairUpdateRequest) *response.ElectionPairResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*response.ElectionPairResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *request.ElectionPairUpdateRequest) error); ok {
 		r1 = rf(ctx, req)
 	} else {
 		r1 = ret.Error(1)

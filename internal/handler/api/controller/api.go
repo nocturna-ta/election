@@ -79,6 +79,7 @@ func (api *API) RegisterRoute() *router.FastRouter {
 				pairs.GET("", api.GetAllElectionPairs, router.MustAuthorized(false))
 				pairs.GET("/number/:no", api.GetElectionPairByNo, router.MustAuthorized(false))
 				pairs.POST("/register", api.RegisterElectionPair, router.MustAuthorized(false))
+				pairs.PUT("/update", api.UpdateElectionPair, router.MustAuthorized(false))
 				pairs.PUT("/detail", api.UpsertElectionPairDetail, router.MustAuthorized(false))
 
 				pairs.POST("/supporting-party", api.AddSupportingParty, router.MustAuthorized(false))

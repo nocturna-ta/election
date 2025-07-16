@@ -10,6 +10,7 @@ import (
 
 type ElectionUseCases interface {
 	RegisterElectionPair(ctx context.Context, req *request.ElectionPairRegistrationRequest) (*response.ElectionPairResponse, error)
+	UpdateElectionPair(ctx context.Context, req *request.ElectionPairUpdateRequest) (*response.ElectionPairResponse, error)
 	GetElectionPairByID(ctx context.Context, id uuid.UUID) (*response.ElectionPairResponse, error)
 	GetElectionPairByNo(ctx context.Context, no string) (*response.ElectionPairResponse, error)
 	GetAllElectionPairs(ctx context.Context) (*[]response.ElectionPairFullResponse, error)

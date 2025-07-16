@@ -758,6 +758,56 @@ paths:
       summary: Add Supporting Party
       tags:
       - Supporting-Party
+  /v1/election/pairs/update:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update Election Pair (President and Vice President)
+      parameters:
+      - description: Authorized User
+        in: header
+        name: X-User-Id
+        type: string
+      - description: Authorized Address
+        in: header
+        name: X-Address-Id
+        type: string
+      - description: Authorized Role
+        in: header
+        name: X-Role
+        type: string
+      - description: Update Request (JSON String)
+        in: formData
+        name: pair
+        required: true
+        type: string
+      - description: Pair Photo (jpg, jpeg, png only)
+        in: formData
+        name: pair_photo
+        type: file
+      - description: President Photo (jpg, jpeg, png only)
+        in: formData
+        name: president_photo
+        type: file
+      - description: Vice President Photo (jpg, jpeg, png only)
+        in: formData
+        name: vice_president_photo
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/controller.jsonResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.ElectionPairResponse'
+              type: object
+      summary: Election Update
+      tags:
+      - Election
   /v1/party:
     get:
       consumes:
